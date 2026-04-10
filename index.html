@@ -624,6 +624,7 @@ function nextQuestion() {
   current = notes[Math.floor(Math.random()*notes.length)];
   drawStaff(current);
   buildChoices(current, notes);
+  playNote(current.name);
 }
 
 function buildChoices(correct, notes) {
@@ -642,7 +643,6 @@ function buildChoices(correct, notes) {
 function checkAnswer(chosen, btn) {
   if (answered || !gameActive) return;
   answered = true;
-  playNote(current.name);
   document.querySelectorAll('.choice-btn').forEach(b => {
     b.disabled = true;
     if (b.textContent === current.name) b.classList.add('correct');
