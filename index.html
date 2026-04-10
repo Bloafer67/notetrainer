@@ -108,9 +108,9 @@
     .timer-bar.warning { background: var(--red-border); }
 
     .staff-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; position: relative; transition: background 0.2s; }
-    .staff-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .staff-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
     .staff-header span { font-size: 13px; color: var(--text3); }
-    .clef-toggle { display: flex; gap: 6px; }
+    .clef-toggle { display: flex; gap: 6px; flex-wrap: wrap; }
     .clef-btn {
       cursor: pointer; padding: 3px 10px; border-radius: 999px;
       border: 0.5px solid var(--border2); background: transparent;
@@ -226,6 +226,7 @@
     .note-pill span { color: var(--text3); font-size: 11px; }
     .mnemonic { background: var(--blue-bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--blue-text); line-height: 1.6; }
     .mnemonic strong { font-weight: 500; }
+    .clef-note { background: var(--surface2); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
 
     footer { margin-top: 2rem; font-size: 12px; color: var(--text3); }
   </style>
@@ -261,7 +262,8 @@
         <span>What note is this?</span>
         <div class="clef-toggle">
           <button class="clef-btn active" id="btn-treble" onclick="setClef('treble')">Treble</button>
-          <button class="clef-btn" id="btn-bass" onclick="setClef('bass')">Bass</button>
+          <button class="clef-btn" id="btn-bass"   onclick="setClef('bass')">Bass</button>
+          <button class="clef-btn" id="btn-guitar" onclick="setClef('guitar')">Guitar (8vb)</button>
         </div>
       </div>
       <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -290,6 +292,9 @@
     <details>
       <summary>Note reference guide</summary>
       <div class="cheat-sheet">
+        <div class="clef-note">
+          <strong>Guitar (8vb) clef</strong> — reads like treble clef but sounds one octave lower. Standard notation for guitar. Covers the open string range of a 12-string in standard tuning: E2–F3.
+        </div>
         <div class="cheat-section">
           <h3>Treble clef — lines (bottom to top)</h3>
           <div class="note-grid">
@@ -307,6 +312,25 @@
             <div class="note-pill">A4 <span>2nd space</span></div>
             <div class="note-pill">C5 <span>3rd space</span></div>
             <div class="note-pill">E5 <span>4th space</span></div>
+          </div>
+        </div>
+        <div class="cheat-section">
+          <h3>Guitar clef (8vb) — lines (bottom to top)</h3>
+          <div class="note-grid">
+            <div class="note-pill">E2 <span>1st line</span></div>
+            <div class="note-pill">G2 <span>2nd line</span></div>
+            <div class="note-pill">B2 <span>3rd line</span></div>
+            <div class="note-pill">D3 <span>4th line</span></div>
+            <div class="note-pill">F3 <span>5th line</span></div>
+          </div>
+        </div>
+        <div class="cheat-section">
+          <h3>Guitar clef (8vb) — spaces (bottom to top)</h3>
+          <div class="note-grid">
+            <div class="note-pill">F2 <span>1st space</span></div>
+            <div class="note-pill">A2 <span>2nd space</span></div>
+            <div class="note-pill">C3 <span>3rd space</span></div>
+            <div class="note-pill">E3 <span>4th space</span></div>
           </div>
         </div>
         <div class="cheat-section">
@@ -331,8 +355,8 @@
         <div class="cheat-section">
           <h3>Memory tricks</h3>
           <div class="mnemonic">
-            <strong>Treble lines:</strong> Every Good Boy Does Fine<br>
-            <strong>Treble spaces:</strong> FACE<br>
+            <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
+            <strong>Treble / Guitar spaces:</strong> FACE<br>
             <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
             <strong>Bass spaces:</strong> All Cows Eat Grass
           </div>
@@ -364,9 +388,9 @@ let darkMode = localStorage.getItem('mntr-dark') === '1';
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   document.getElementById('dark-toggle').textContent = darkMode ? '☀️ Light mode' : '🌙 Dark mode';
+  if (current) drawStaff(current);
 }
 function toggleDark() { darkMode = !darkMode; localStorage.setItem('mntr-dark', darkMode ? '1' : '0'); applyTheme(); }
-applyTheme();
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(name) {
@@ -390,6 +414,7 @@ const KEY_SIGS = [
   { label: 'Eb major', short: 'Eb', acc: { B:'b', E:'b', A:'b' } },
   { label: 'Ab major', short: 'Ab', acc: { B:'b', E:'b', A:'b', D:'b' } },
 ];
+
 const TREBLE_BASE = [
   {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},{name:'A4',step:3},
   {name:'B4',step:4},{name:'C5',step:5},{name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
@@ -398,6 +423,12 @@ const BASS_BASE = [
   {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
   {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
 ];
+// Guitar 8vb: same staff positions as treble, note names one octave lower
+const GUITAR_BASE = [
+  {name:'E2',step:0},{name:'F2',step:1},{name:'G2',step:2},{name:'A2',step:3},
+  {name:'B2',step:4},{name:'C3',step:5},{name:'D3',step:6},{name:'E3',step:7},{name:'F3',step:8},
+];
+
 function applyKey(base, acc) {
   return base.map(n => {
     const l = n.name[0];
@@ -422,24 +453,33 @@ function loadBest() {
   document.getElementById('best').textContent = b > 0 ? b : '—';
   return b;
 }
-function onKeyChange() { keyIndex = parseInt(ks.value); gameActive ? nextQuestion() : loadBest(); }
+function onKeyChange() {
+  keyIndex = parseInt(ks.value);
+  loadBest();
+  if (gameActive) nextQuestion();
+}
+
 function setClef(c) {
   clef = c;
-  document.getElementById('btn-treble').className = 'clef-btn' + (c==='treble'?' active':'');
-  document.getElementById('btn-bass').className   = 'clef-btn' + (c==='bass'  ?' active':'');
+  document.getElementById('btn-treble').className = 'clef-btn' + (c==='treble' ? ' active' : '');
+  document.getElementById('btn-bass').className   = 'clef-btn' + (c==='bass'   ? ' active' : '');
+  document.getElementById('btn-guitar').className = 'clef-btn' + (c==='guitar' ? ' active' : '');
   gameActive ? nextQuestion() : loadBest();
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────
 function startGame() {
   score = 0; streak = 0; timeLeft = 60; answered = false; gameActive = true;
-  ['score','streak','timer'].forEach(id => document.getElementById(id).textContent = id==='timer'?'60':'0');
+  ['score','streak'].forEach(id => document.getElementById(id).textContent = '0');
+  document.getElementById('timer').textContent = '60';
   document.getElementById('timer').className = 'metric-val';
   document.getElementById('timer-bar').style.width = '100%';
   document.getElementById('timer-bar').className = 'timer-bar';
   document.getElementById('game-over').style.display = 'none';
   document.getElementById('choices').style.display = 'grid';
   document.getElementById('feedback').textContent = '';
+  const saveBtn = document.querySelector('.save-btn');
+  saveBtn.textContent = 'Save score'; saveBtn.disabled = false;
   loadBest();
   nextQuestion();
   clearInterval(timerInterval);
@@ -474,7 +514,10 @@ function endGame() {
   loadBest();
 }
 
-function noteSet() { return applyKey(clef==='treble'?TREBLE_BASE:BASS_BASE, KEY_SIGS[keyIndex].acc); }
+function noteSet() {
+  const base = clef === 'bass' ? BASS_BASE : clef === 'guitar' ? GUITAR_BASE : TREBLE_BASE;
+  return applyKey(base, KEY_SIGS[keyIndex].acc);
+}
 
 function nextQuestion() {
   answered = false;
@@ -537,10 +580,10 @@ function drawStaff(note) {
   svg.innerHTML = '';
   const topLine = 25, gap = 12, ns = 'http://www.w3.org/2000/svg';
   const isDark = darkMode;
-  const lineCol = isDark ? '#666' : '#888';
-  const clefCol = isDark ? '#aaa' : '#666';
+  const lineCol   = isDark ? '#666' : '#888';
+  const clefCol   = isDark ? '#aaa' : '#666';
   const ledgerCol = isDark ? '#999' : '#444';
-  const noteCol = isDark ? '#85B7EB' : '#185FA5';
+  const noteCol   = isDark ? '#85B7EB' : '#185FA5';
 
   function el(tag, attrs, text) {
     const e = document.createElementNS(ns, tag);
@@ -548,17 +591,27 @@ function drawStaff(note) {
     if (text !== undefined) e.textContent = text;
     return e;
   }
-  for (let i=0;i<5;i++) {
+
+  for (let i=0; i<5; i++) {
     const y = topLine+i*gap;
     svg.appendChild(el('line',{x1:40,x2:300,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
   }
-  svg.appendChild(el('text',{x:'8',y:clef==='treble'?topLine+gap*4+4:topLine+gap*2,'font-size':clef==='treble'?'52':'30',fill:clefCol},clef==='treble'?'𝄞':'𝄢'));
+
+  // Clef symbol — treble and guitar both use 𝄞, guitar adds a small "8" beneath
+  if (clef === 'bass') {
+    svg.appendChild(el('text',{x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol},'𝄢'));
+  } else {
+    svg.appendChild(el('text',{x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol},'𝄞'));
+    if (clef === 'guitar') {
+      svg.appendChild(el('text',{x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'},'8'));
+    }
+  }
 
   const cy = noteYPos(note.step,topLine,gap), cx=170, r=7;
   if (note.step===0) svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:cy,y2:cy,stroke:ledgerCol,'stroke-width':'1.5'}));
   if (note.step===8) { const ly=topLine-gap; svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:ly,y2:ly,stroke:ledgerCol,'stroke-width':'1.5'})); }
 
-  const acc = note.name.length>2?note.name[1]:null;
+  const acc = note.name.length>2 ? note.name[1] : null;
   if (acc) svg.appendChild(el('text',{x:cx-20,y:cy+5,'font-size':'16',fill:noteCol,'font-weight':'500'},acc==='#'?'♯':'♭'));
 
   svg.appendChild(el('ellipse',{cx,cy,rx:r,ry:Math.round(r*0.72),fill:noteCol,transform:`rotate(-15,${cx},${cy})`}));
@@ -578,10 +631,11 @@ function saveToLeaderboard() {
   const nameEl = document.getElementById('player-name');
   const name = nameEl.value.trim() || 'Anonymous';
   localStorage.setItem('mntr-playername', name);
+  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
   const entry = {
     name, score: lastScore,
     key: KEY_SIGS[keyIndex].label,
-    clef: clef.charAt(0).toUpperCase() + clef.slice(1),
+    clef: clefLabel,
     date: new Date().toLocaleDateString()
   };
   const entries = getEntries();
@@ -589,8 +643,8 @@ function saveToLeaderboard() {
   entries.sort((a,b) => b.score - a.score);
   saveEntries(entries.slice(0, 100));
   showToast('Score saved!');
-  document.querySelector('.save-btn').textContent = 'Saved ✓';
-  document.querySelector('.save-btn').disabled = true;
+  const saveBtn = document.querySelector('.save-btn');
+  saveBtn.textContent = 'Saved ✓'; saveBtn.disabled = true;
 }
 
 function clearLeaderboard() {
@@ -601,7 +655,6 @@ function renderLeaderboard() {
   const entries = getEntries();
   const keys = ['all', ...new Set(entries.map(e => e.key))];
 
-  // Filters
   const fEl = document.getElementById('lb-filters');
   fEl.innerHTML = '';
   keys.forEach(k => {
@@ -629,8 +682,8 @@ function renderLeaderboard() {
     row.innerHTML = `
       <div class="lb-rank ${rankClass}">${medal}</div>
       <div>
-        <div class="lb-name">${e.name}</div>
-        <div class="lb-meta">${e.clef} clef &middot; ${e.key} &middot; ${e.date}</div>
+        <div class="lb-name">${escHtml(e.name)}</div>
+        <div class="lb-meta">${e.clef} &middot; ${e.key} &middot; ${e.date}</div>
       </div>
       <div></div>
       <div class="lb-score">${e.score}</div>
@@ -639,7 +692,12 @@ function renderLeaderboard() {
   });
 }
 
+function escHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
+applyTheme();
 loadBest();
 startGame();
 </script>
