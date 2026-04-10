@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Note Trainer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f4f0;
+      color: #1a1a18;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      color: #1a1a18;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Score row */
+    .score-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .metric {
+      background: #fff;
+      border: 0.5px solid #d3d1c7;
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .metric-label { font-size: 12px; color: #888780; }
+    .metric-val { font-size: 22px; font-weight: 500; }
+
+    /* Staff card */
+    .staff-card {
+      background: #fff;
+      border: 0.5px solid #d3d1c7;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .staff-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .staff-header span { font-size: 13px; color: #888780; }
+    .clef-toggle { display: flex; gap: 6px; }
+    .clef-btn {
+      cursor: pointer;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 0.5px solid #b4b2a9;
+      background: transparent;
+      font-size: 12px;
+      color: #5f5e5a;
+      font-family: inherit;
+      transition: background 0.1s;
+    }
+    .clef-btn.active {
+      background: #E6F1FB;
+      color: #185FA5;
+      border-color: #378ADD;
+    }
+    svg#staff-svg { width: 100%; display: block; }
+
+    /* Choices */
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .choice-btn {
+      background: #fff;
+      border: 0.5px solid #b4b2a9;
+      border-radius: 8px;
+      padding: 10px 4px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.12s;
+      font-family: inherit;
+      color: #1a1a18;
+    }
+    .choice-btn:hover { background: #f1efe8; }
+    .choice-btn.correct { background: #EAF3DE; color: #3B6D11; border-color: #639922; }
+    .choice-btn.wrong   { background: #FCEBEB; color: #A32D2D; border-color: #E24B4A; }
+
+    /* Feedback */
+    .feedback {
+      min-height: 22px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #888780;
+      text-align: center;
+    }
+
+    /* Next button */
+    .next-btn {
+      width: 100%;
+      padding: 11px;
+      border-radius: 8px;
+      background: transparent;
+      border: 0.5px solid #b4b2a9;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+      color: #1a1a18;
+      display: none;
+      transition: background 0.12s;
+    }
+    .next-btn:hover { background: #f1efe8; }
+
+    /* High score banner */
+    .high-score-banner {
+      background: #FAEEDA;
+      border: 0.5px solid #EF9F27;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #633806;
+      text-align: center;
+      display: none;
+    }
+
+    /* Cheat sheet */
+    details {
+      background: #fff;
+      border: 0.5px solid #d3d1c7;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    summary {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #5f5e5a;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: '▸'; font-size: 11px; color: #888780; }
+    details[open] summary::after { content: '▾'; }
+
+    .cheat-sheet {
+      padding: 0 16px 16px;
+    }
+    .cheat-section { margin-bottom: 14px; }
+    .cheat-section h3 {
+      font-size: 12px;
+      font-weight: 500;
+      color: #888780;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .note-pill {
+      background: #f1efe8;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 12px;
+      color: #444441;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .note-pill span { color: #888780; font-size: 11px; }
+
+    .mnemonic {
+      background: #E6F1FB;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #0C447C;
+      line-height: 1.6;
+    }
+    .mnemonic strong { font-weight: 500; }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 12px;
+      color: #b4b2a9;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Music Note Trainer</h1>
+
+<div class="container">
+
+  <div class="high-score-banner" id="hs-banner"></div>
+
+  <div class="score-row">
+    <div class="metric"><div class="metric-label">Score</div><div class="metric-val" id="score">0</div></div>
+    <div class="metric"><div class="metric-label">Streak</div><div class="metric-val" id="streak">0</div></div>
+    <div class="metric"><div class="metric-label">Best</div><div class="metric-val" id="best">0</div></div>
+  </div>
+
+  <div class="staff-card">
+    <div class="staff-header">
+      <span>What note is this?</span>
+      <div class="clef-toggle">
+        <button class="clef-btn active" id="btn-treble" onclick="setClef('treble')">Treble</button>
+        <button class="clef-btn" id="btn-bass" onclick="setClef('bass')">Bass</button>
+      </div>
+    </div>
+    <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="choices" id="choices"></div>
+  <div class="feedback" id="feedback"></div>
+  <button class="next-btn" id="next-btn" onclick="nextQuestion()">Next note →</button>
+
+  <!-- Cheat sheet -->
+  <details>
+    <summary>Note reference guide</summary>
+    <div class="cheat-sheet">
+
+      <div class="cheat-section">
+        <h3>Treble clef — lines (bottom to top)</h3>
+        <div class="note-grid">
+          <div class="note-pill">E4 <span>1st line</span></div>
+          <div class="note-pill">G4 <span>2nd line</span></div>
+          <div class="note-pill">B4 <span>3rd line</span></div>
+          <div class="note-pill">D5 <span>4th line</span></div>
+          <div class="note-pill">F5 <span>5th line</span></div>
+        </div>
+      </div>
+
+      <div class="cheat-section">
+        <h3>Treble clef — spaces (bottom to top)</h3>
+        <div class="note-grid">
+          <div class="note-pill">F4 <span>1st space</span></div>
+          <div class="note-pill">A4 <span>2nd space</span></div>
+          <div class="note-pill">C5 <span>3rd space</span></div>
+          <div class="note-pill">E5 <span>4th space</span></div>
+        </div>
+      </div>
+
+      <div class="cheat-section">
+        <h3>Bass clef — lines (bottom to top)</h3>
+        <div class="note-grid">
+          <div class="note-pill">G2 <span>1st line</span></div>
+          <div class="note-pill">B2 <span>2nd line</span></div>
+          <div class="note-pill">D3 <span>3rd line</span></div>
+          <div class="note-pill">F3 <span>4th line</span></div>
+          <div class="note-pill">A3 <span>5th line</span></div>
+        </div>
+      </div>
+
+      <div class="cheat-section">
+        <h3>Bass clef — spaces (bottom to top)</h3>
+        <div class="note-grid">
+          <div class="note-pill">A2 <span>1st space</span></div>
+          <div class="note-pill">C3 <span>2nd space</span></div>
+          <div class="note-pill">E3 <span>3rd space</span></div>
+          <div class="note-pill">G3 <span>4th space</span></div>
+        </div>
+      </div>
+
+      <div class="cheat-section">
+        <h3>Memory tricks</h3>
+        <div class="mnemonic">
+          <strong>Treble lines:</strong> Every Good Boy Does Fine<br>
+          <strong>Treble spaces:</strong> FACE<br>
+          <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
+          <strong>Bass spaces:</strong> All Cows Eat Grass
+        </div>
+      </div>
+
+    </div>
+  </details>
+
+</div>
+
+<footer>Built with HTML + JS &middot; No frameworks needed</footer>
+
+<script>
+  const TREBLE = [
+    {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},
+    {name:'A4',step:3},{name:'B4',step:4},{name:'C5',step:5},
+    {name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
+  ];
+  const BASS = [
+    {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},
+    {name:'C3',step:3},{name:'D3',step:4},{name:'E3',step:5},
+    {name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
+  ];
+
+  let clef = 'treble';
+  let score = 0, streak = 0;
+  let best = parseInt(localStorage.getItem('mntr-best') || '0');
+  let current = null, answered = false;
+
+  document.getElementById('best').textContent = best;
+
+  function setClef(c) {
+    clef = c;
+    document.getElementById('btn-treble').className = 'clef-btn' + (c === 'treble' ? ' active' : '');
+    document.getElementById('btn-bass').className   = 'clef-btn' + (c === 'bass'   ? ' active' : '');
+    nextQuestion();
+  }
+
+  function noteSet() { return clef === 'treble' ? TREBLE : BASS; }
+
+  function nextQuestion() {
+    answered = false;
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('hs-banner').style.display = 'none';
+    const notes = noteSet();
+    current = notes[Math.floor(Math.random() * notes.length)];
+    drawStaff(current);
+    buildChoices(current, notes);
+  }
+
+  function noteYPos(step, topLine, gap) {
+    return topLine + 4 * gap - step * (gap / 2);
+  }
+
+  function drawStaff(note) {
+    const svg = document.getElementById('staff-svg');
+    svg.innerHTML = '';
+    const topLine = 25, gap = 12;
+    const ns = 'http://www.w3.org/2000/svg';
+
+    function el(tag, attrs) {
+      const e = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const y = topLine + i * gap;
+      svg.appendChild(el('line', {x1:40, x2:300, y1:y, y2:y, stroke:'#888', 'stroke-width':'1'}));
+    }
+
+    const clefText = el('text', {
+      x: '8',
+      y: clef === 'treble' ? topLine + gap * 4 + 4 : topLine + gap * 2,
+      'font-size': clef === 'treble' ? '52' : '30',
+      fill: '#666'
+    });
+    clefText.textContent = clef === 'treble' ? '𝄞' : '𝄢';
+    svg.appendChild(clefText);
+
+    const cy = noteYPos(note.step, topLine, gap);
+    const cx = 170, r = 7;
+
+    if (note.step === 0) {
+      svg.appendChild(el('line', {x1:cx-r-4, x2:cx+r+4, y1:cy, y2:cy, stroke:'#444', 'stroke-width':'1.5'}));
+    }
+    if (note.step === 8) {
+      const ly = topLine - gap;
+      svg.appendChild(el('line', {x1:cx-r-4, x2:cx+r+4, y1:ly, y2:ly, stroke:'#444', 'stroke-width':'1.5'}));
+    }
+
+    const noteEl = el('ellipse', {
+      cx, cy, rx: r, ry: Math.round(r * 0.72),
+      fill: '#185FA5',
+      transform: `rotate(-15, ${cx}, ${cy})`
+    });
+    svg.appendChild(noteEl);
+
+    const stemUp = note.step < 4;
+    svg.appendChild(el('line', {
+      x1: stemUp ? cx + r - 1 : cx - r + 1,
+      x2: stemUp ? cx + r - 1 : cx - r + 1,
+      y1: cy,
+      y2: stemUp ? cy - 32 : cy + 32,
+      stroke: '#185FA5', 'stroke-width': '1.5'
+    }));
+  }
+
+  function buildChoices(correct, notes) {
+    const pool = notes.filter(n => n.name !== correct.name).sort(() => Math.random() - 0.5).slice(0, 3);
+    const opts = [...pool.map(n => n.name), correct.name].sort(() => Math.random() - 0.5);
+    const container = document.getElementById('choices');
+    container.innerHTML = '';
+    opts.forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = name;
+      btn.onclick = () => checkAnswer(name, btn);
+      container.appendChild(btn);
+    });
+  }
+
+  function checkAnswer(chosen, btn) {
+    if (answered) return;
+    answered = true;
+    const fb = document.getElementById('feedback');
+
+    document.querySelectorAll('.choice-btn').forEach(b => {
+      if (b.textContent === current.name) b.classList.add('correct');
+    });
+
+    if (chosen === current.name) {
+      score++; streak++;
+      fb.textContent = streak >= 3 ? `Correct! ${streak} in a row! 🔥` : 'Correct!';
+      fb.style.color = '#3B6D11';
+
+      if (score > best) {
+        best = score;
+        localStorage.setItem('mntr-best', best);
+        document.getElementById('best').textContent = best;
+        const banner = document.getElementById('hs-banner');
+        banner.textContent = `New high score: ${best}!`;
+        banner.style.display = 'block';
+      }
+    } else {
+      btn.classList.add('wrong');
+      streak = 0;
+      fb.textContent = `Not quite — it was ${current.name}.`;
+      fb.style.color = '#A32D2D';
+    }
+
+    document.getElementById('score').textContent = score;
+    document.getElementById('streak').textContent = streak;
+    document.getElementById('next-btn').style.display = 'block';
+  }
+
+  nextQuestion();
+</script>
+</body>
+</html>
