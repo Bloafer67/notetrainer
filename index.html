@@ -657,19 +657,25 @@ async function saveToLeaderboard() {
     });
     showToast('Score saved!');
     saveBtn.textContent = 'Saved ✓';
-    await fetchLeaderboard();
   } catch(e) {
+    console.error('Supabase save error:', e.message);
     saveBtn.textContent = 'Save score'; saveBtn.disabled = false;
-    showToast('Could not save — check connection');
+    showToast('Error: ' + e.message.slice(0, 60));
+    return;
   }
+  fetchLeaderboard();
 }
 
 async function fetchLeaderboard() {
   try {
-    const data = await sbFetch('/rest/v1/leaderboard?select=*&order=score.desc&limit=100');
+    const data = await sbFetch('/rest/v1/leaderboard?select=*&order=score.desc&limit=100', {
+      method: 'GET',
+      prefer: 'return=representation'
+    });
     lbCache = data || [];
     renderLeaderboard();
   } catch(e) {
+    console.error('Supabase fetch error:', e.message);
     document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Could not load scores — check your connection.</div>';
   }
 }
