@@ -172,33 +172,55 @@
     }
     .mute-btn:hover { background: var(--surface2); }
 
-    .feedback { min-height: 22px; font-size: 14px; font-weight: 500; color: var(--text3); text-align: center; }
-
-    .game-over {
-      display: none; flex-direction: column; align-items: center; gap: 12px;
-      background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px;
-      padding: 2rem; text-align: center;
+    /* Staff overlays */
+    .staff-overlay {
+      display: none; position: absolute; inset: 0;
+      border-radius: 12px; z-index: 30;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; text-align: center; padding: 1.5rem;
     }
-    .game-over h2 { font-size: 18px; font-weight: 500; }
-    .final-score { font-size: 52px; font-weight: 500; color: var(--blue); line-height: 1; }
-    .game-over .sub { font-size: 13px; color: var(--text3); }
-    .game-over .new-best { font-size: 13px; color: var(--amber-text); font-weight: 500; }
+    .staff-overlay.show { display: flex; }
+    .staff-overlay.scrim { background: var(--bg); }
+    .staff-overlay.scrim::before {
+      content: ''; position: absolute; inset: 0; border-radius: 12px;
+      border: 0.5px solid var(--border); pointer-events: none;
+    }
 
-    .name-row { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
-    .name-input {
+    .play-btn {
+      background: var(--blue); color: #fff; border: none;
+      border-radius: 999px; padding: 12px 36px;
+      font-size: 17px; font-weight: 500; font-family: inherit;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .play-btn:hover { opacity: 0.88; }
+
+    .overlay-score { font-size: 52px; font-weight: 500; color: var(--blue); line-height: 1; }
+    .overlay-sub { font-size: 13px; color: var(--text3); }
+    .overlay-best { font-size: 13px; color: var(--amber-text); font-weight: 500; }
+    .overlay-name-row { display: flex; gap: 8px; width: 100%; }
+    .overlay-name-input {
       flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 14px;
       border: 0.5px solid var(--border2); background: var(--surface2);
       color: var(--text); font-family: inherit; outline: none;
     }
-    .name-input:focus { border-color: var(--blue); }
-    .save-btn, .restart-btn {
-      padding: 8px 18px; border-radius: 8px; font-size: 14px;
+    .overlay-name-input::placeholder { color: var(--text3); }
+    .overlay-name-input:focus { border-color: var(--blue); }
+    .overlay-save-btn {
+      padding: 8px 16px; border-radius: 8px; font-size: 14px;
       font-family: inherit; cursor: pointer; white-space: nowrap;
+      background: var(--blue); color: #fff; border: none;
     }
-    .save-btn { background: var(--blue); color: #fff; border: none; }
-    .save-btn:hover { opacity: 0.88; }
-    .restart-btn { background: transparent; border: 0.5px solid var(--border2); color: var(--text); }
-    .restart-btn:hover { background: var(--surface2); }
+    .overlay-save-btn:hover { opacity: 0.88; }
+    .overlay-play-again {
+      background: transparent; border: 0.5px solid var(--border2);
+      color: var(--text); border-radius: 8px; padding: 8px 24px;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+    }
+    .overlay-play-again:hover { background: var(--surface2); }
+
+    .feedback { min-height: 22px; font-size: 14px; font-weight: 500; color: var(--text3); text-align: center; }
+
+
 
     /* Leaderboard */
     .lb-header { display: flex; justify-content: space-between; align-items: center; }
@@ -284,6 +306,24 @@
     <div class="staff-card">
       <div class="hs-toast" id="hs-toast">New high score!</div>
       <div class="answer-toast" id="answer-toast"></div>
+
+      <!-- Pre-game overlay -->
+      <div class="staff-overlay scrim show" id="overlay-start">
+        <button class="play-btn" onclick="startGame()">Play</button>
+      </div>
+
+      <!-- Post-game overlay -->
+      <div class="staff-overlay scrim" id="overlay-end">
+        <div class="overlay-score" id="overlay-final-score">0</div>
+        <div class="overlay-sub">notes correct in 60 seconds</div>
+        <div class="overlay-best" id="overlay-new-best" style="display:none">⭐ New high score!</div>
+        <div class="overlay-name-row">
+          <input class="overlay-name-input" id="player-name" type="text" placeholder="Your name" maxlength="20" />
+          <button class="overlay-save-btn" id="save-btn" onclick="saveToLeaderboard()">Save</button>
+        </div>
+        <button class="overlay-play-again" onclick="startGame()">Play again</button>
+      </div>
+
       <div class="staff-header">
         <span>What note is this?</span>
         <div class="clef-toggle">
@@ -304,18 +344,6 @@
 
     <div class="choices" id="choices"></div>
     <div class="feedback" id="feedback"></div>
-
-    <div class="game-over" id="game-over">
-      <h2>Time's up!</h2>
-      <div class="final-score" id="final-score">0</div>
-      <div class="sub">notes correct in 60 seconds</div>
-      <div class="new-best" id="new-best-msg" style="display:none">⭐ New high score!</div>
-      <div class="name-row">
-        <input class="name-input" id="player-name" type="text" placeholder="Your name" maxlength="20" />
-        <button class="save-btn" onclick="saveToLeaderboard()">Save score</button>
-      </div>
-      <button class="restart-btn" onclick="startGame()">Play again</button>
-    </div>
 
     <details>
       <summary>Note reference guide</summary>
@@ -527,11 +555,25 @@ const GUITAR_BASE = [
   {name:'B2',step:4},{name:'C3',step:5},{name:'D3',step:6},{name:'E3',step:7},{name:'F3',step:8},
 ];
 
+// Key signature accidental positions on staff (step = staff position for the symbol)
+// Treble/Guitar clef sharp order: F5(8), C5(5), G5(10→clipped to top), D5(6), A4(3), E5(7), B4(4)
+// Treble/Guitar clef flat order:  B4(4), E5(7), A4(3), D5(6), G4(2), C5(5), F4(1)
+// Bass clef sharp order: F3(6), C3(3), G3(7→top), D3(4), A2(1), E3(5), B2(2)
+// Bass clef flat order:  B2(2), E3(5), A2(1), D3(4), G2(0→ledger), C3(3), F3(6)
+const KS_POSITIONS = {
+  treble: {
+    sharps: [8,5,9,6,3,7,4],
+    flats:  [4,7,3,6,2,5,1]
+  },
+  bass: {
+    sharps: [6,3,7,4,1,5,2],
+    flats:  [2,5,1,4,0,3,6]
+  }
+};
+
 function applyKey(base, acc) {
-  return base.map(n => {
-    const l = n.name[0];
-    return acc[l] ? { name: l + acc[l] + n.name.slice(1), step: n.step } : n;
-  });
+  // Returns notes with natural names — key sig shown on staff, not inline on note
+  return base.map(n => ({ name: n.name, step: n.step, actualName: acc[n.name[0]] ? n.name[0] + acc[n.name[0]] + n.name.slice(1) : n.name }));
 }
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -566,6 +608,16 @@ function setClef(c) {
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────
+function setupBoard() {
+  // Draw a staff without starting the timer — shown on first load
+  const notes = applyKey(clef === 'bass' ? BASS_BASE : clef === 'guitar' ? GUITAR_BASE : TREBLE_BASE, KEY_SIGS[keyIndex].acc);
+  const preview = notes[Math.floor(Math.random() * notes.length)];
+  drawStaff(preview);
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('overlay-start').classList.add('show');
+  document.getElementById('overlay-end').classList.remove('show');
+}
+
 function startGame() {
   score = 0; streak = 0; timeLeft = 60; answered = false; gameActive = true;
   ['score','streak'].forEach(id => document.getElementById(id).textContent = '0');
@@ -573,11 +625,13 @@ function startGame() {
   document.getElementById('timer').className = 'metric-val';
   document.getElementById('timer-bar').style.width = '100%';
   document.getElementById('timer-bar').className = 'timer-bar';
-  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('overlay-start').classList.remove('show');
+  document.getElementById('overlay-end').classList.remove('show');
   document.getElementById('choices').style.display = 'grid';
   document.getElementById('feedback').textContent = '';
-  const saveBtn = document.querySelector('.save-btn');
-  saveBtn.textContent = 'Save score'; saveBtn.disabled = false;
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+  saveBtn.onclick = saveToLeaderboard;
   loadBest();
   nextQuestion();
   clearInterval(timerInterval);
@@ -604,11 +658,11 @@ function endGame() {
   const prev = parseInt(localStorage.getItem(bestKey()) || '0');
   const isNew = score > prev;
   if (isNew) localStorage.setItem(bestKey(), score);
-  document.getElementById('final-score').textContent = score;
-  document.getElementById('new-best-msg').style.display = (isNew && score > 0) ? 'block' : 'none';
-  document.getElementById('game-over').style.display = 'flex';
+  document.getElementById('overlay-final-score').textContent = score;
+  document.getElementById('overlay-new-best').style.display = (isNew && score > 0) ? 'block' : 'none';
   const savedName = localStorage.getItem('mntr-playername') || '';
   document.getElementById('player-name').value = savedName;
+  document.getElementById('overlay-end').classList.add('show');
   loadBest();
 }
 
@@ -624,17 +678,20 @@ function nextQuestion() {
   current = notes[Math.floor(Math.random()*notes.length)];
   drawStaff(current);
   buildChoices(current, notes);
+  playNote(current.actualName);
 }
 
 function buildChoices(correct, notes) {
   const pool = notes.filter(n=>n.name!==correct.name).sort(()=>Math.random()-0.5).slice(0,3);
-  const opts = [...pool.map(n=>n.name), correct.name].sort(()=>Math.random()-0.5);
+  const opts = [...pool, correct].sort(()=>Math.random()-0.5);
   const c = document.getElementById('choices');
   c.innerHTML = '';
-  opts.forEach(name => {
+  opts.forEach(note => {
     const btn = document.createElement('button');
-    btn.className = 'choice-btn'; btn.textContent = name;
-    btn.onclick = () => checkAnswer(name, btn);
+    btn.className = 'choice-btn';
+    btn.textContent = note.name; // natural name with octave e.g. "F4"
+    btn.dataset.name = note.name;
+    btn.onclick = () => checkAnswer(note.name, btn);
     c.appendChild(btn);
   });
 }
@@ -642,7 +699,6 @@ function buildChoices(correct, notes) {
 function checkAnswer(chosen, btn) {
   if (answered || !gameActive) return;
   answered = true;
-  playNote(current.name);
   document.querySelectorAll('.choice-btn').forEach(b => {
     b.disabled = true;
     if (b.textContent === current.name) b.classList.add('correct');
@@ -685,6 +741,7 @@ function drawStaff(note) {
   const clefCol   = isDark ? '#aaa' : '#666';
   const ledgerCol = isDark ? '#999' : '#444';
   const noteCol   = isDark ? '#85B7EB' : '#185FA5';
+  const accCol    = isDark ? '#aaa' : '#444';
 
   function el(tag, attrs, text) {
     const e = document.createElementNS(ns, tag);
@@ -698,7 +755,7 @@ function drawStaff(note) {
     svg.appendChild(el('line',{x1:40,x2:300,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
   }
 
-  // Clef symbol — treble and guitar both use 𝄞, guitar adds a small "8" beneath
+  // Clef symbol
   if (clef === 'bass') {
     svg.appendChild(el('text',{x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol},'𝄢'));
   } else {
@@ -708,16 +765,31 @@ function drawStaff(note) {
     }
   }
 
-  const cy = noteYPos(note.step,topLine,gap), cx=170, r=7;
-  if (note.step===0) svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:cy,y2:cy,stroke:ledgerCol,'stroke-width':'1.5'}));
-  if (note.step===8) { const ly=topLine-gap; svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:ly,y2:ly,stroke:ledgerCol,'stroke-width':'1.5'})); }
+  // Key signature symbols after clef
+  const acc = KEY_SIGS[keyIndex].acc;
+  const accLetters = Object.keys(acc);
+  if (accLetters.length > 0) {
+    const isSharp = acc[accLetters[0]] === '#';
+    const clefType = clef === 'bass' ? 'bass' : 'treble';
+    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
+    const symbol = isSharp ? '♯' : '♭';
+    let ksx = 46;
+    accLetters.forEach((_, i) => {
+      const ky = noteYPos(positions[i], topLine, gap);
+      svg.appendChild(el('text',{x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'},symbol));
+      ksx += 10;
+    });
+  }
 
-  const acc = note.name.length>2 ? note.name[1] : null;
-  if (acc) svg.appendChild(el('text',{x:cx-20,y:cy+5,'font-size':'16',fill:noteCol,'font-weight':'500'},acc==='#'?'♯':'♭'));
+  // Note — no inline accidental, key sig handles it
+  const noteCx = accLetters.length > 0 ? 185 : 170;
+  const cy = noteYPos(note.step,topLine,gap), r=7;
+  if (note.step===0) svg.appendChild(el('line',{x1:noteCx-r-4,x2:noteCx+r+4,y1:cy,y2:cy,stroke:ledgerCol,'stroke-width':'1.5'}));
+  if (note.step===8) { const ly=topLine-gap; svg.appendChild(el('line',{x1:noteCx-r-4,x2:noteCx+r+4,y1:ly,y2:ly,stroke:ledgerCol,'stroke-width':'1.5'})); }
 
-  svg.appendChild(el('ellipse',{cx,cy,rx:r,ry:Math.round(r*0.72),fill:noteCol,transform:`rotate(-15,${cx},${cy})`}));
+  svg.appendChild(el('ellipse',{cx:noteCx,cy,rx:r,ry:Math.round(r*0.72),fill:noteCol,transform:`rotate(-15,${noteCx},${cy})`}));
   const stemUp = note.step<4;
-  svg.appendChild(el('line',{x1:stemUp?cx+r-1:cx-r+1,x2:stemUp?cx+r-1:cx-r+1,y1:cy,y2:stemUp?cy-32:cy+32,stroke:noteCol,'stroke-width':'1.5'}));
+  svg.appendChild(el('line',{x1:stemUp?noteCx+r-1:noteCx-r+1,x2:stemUp?noteCx+r-1:noteCx-r+1,y1:cy,y2:stemUp?cy-32:cy+32,stroke:noteCol,'stroke-width':'1.5'}));
 }
 
 // ── Supabase config ───────────────────────────────────────────────────────
@@ -749,7 +821,7 @@ async function saveToLeaderboard() {
   const name = nameEl.value.trim() || 'Anonymous';
   localStorage.setItem('mntr-playername', name);
   const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  const saveBtn = document.querySelector('.save-btn');
+  const saveBtn = document.getElementById('save-btn');
   saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
   try {
     await sbFetch('/rest/v1/leaderboard', {
@@ -758,10 +830,13 @@ async function saveToLeaderboard() {
       body: JSON.stringify({ name, score: lastScore, clef: clefLabel, key: KEY_SIGS[keyIndex].label })
     });
     showToast('Score saved!');
-    saveBtn.textContent = 'Saved ✓';
+    saveBtn.textContent = 'Go to leaderboard →';
+    saveBtn.disabled = false;
+    saveBtn.onclick = () => switchTab('leaderboard');
   } catch(e) {
     console.error('Supabase save error:', e.message);
-    saveBtn.textContent = 'Save score'; saveBtn.disabled = false;
+    saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+    saveBtn.onclick = saveToLeaderboard;
     showToast('Error: ' + e.message.slice(0, 60));
     return;
   }
@@ -837,7 +912,7 @@ function escHtml(s) {
 applyTheme();
 document.getElementById('mute-btn').textContent = muted ? '🔇 Muted' : '🔊 Sound';
 loadBest();
-startGame();
+setupBoard();
 fetchLeaderboard();
 </script>
 </body>
