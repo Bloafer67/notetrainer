@@ -18,212 +18,116 @@
       padding: 2rem 1rem;
     }
 
-    h1 {
-      font-size: 22px;
-      font-weight: 500;
-      margin-bottom: 1.5rem;
-      color: #1a1a18;
-    }
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.5rem; }
 
-    .container {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
 
-    /* Score row */
-    .score-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .metric {
-      background: #fff;
-      border: 0.5px solid #d3d1c7;
-      border-radius: 12px;
-      padding: 0.75rem 1rem;
-      text-align: center;
-    }
-    .metric-label { font-size: 12px; color: #888780; }
-    .metric-val { font-size: 22px; font-weight: 500; }
+    .score-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .metric { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 0.75rem 0.5rem; text-align: center; }
+    .metric-label { font-size: 11px; color: #888780; }
+    .metric-val { font-size: 20px; font-weight: 500; }
+    .metric-val.timer-warning { color: #A32D2D; }
 
-    /* Staff card */
-    .staff-card {
-      background: #fff;
-      border: 0.5px solid #d3d1c7;
-      border-radius: 12px;
-      padding: 1.25rem;
-    }
-    .staff-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
+    .timer-bar-wrap { background: #e8e7e2; border-radius: 999px; height: 4px; overflow: hidden; }
+    .timer-bar { height: 4px; border-radius: 999px; background: #185FA5; transition: width 1s linear, background 0.3s; width: 100%; }
+    .timer-bar.warning { background: #E24B4A; }
+
+    .staff-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.25rem; position: relative; }
+    .staff-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .staff-header span { font-size: 13px; color: #888780; }
     .clef-toggle { display: flex; gap: 6px; }
     .clef-btn {
-      cursor: pointer;
-      padding: 3px 10px;
-      border-radius: 999px;
-      border: 0.5px solid #b4b2a9;
-      background: transparent;
-      font-size: 12px;
-      color: #5f5e5a;
-      font-family: inherit;
-      transition: background 0.1s;
+      cursor: pointer; padding: 3px 10px; border-radius: 999px;
+      border: 0.5px solid #b4b2a9; background: transparent;
+      font-size: 12px; color: #5f5e5a; font-family: inherit;
     }
-    .clef-btn.active {
-      background: #E6F1FB;
-      color: #185FA5;
-      border-color: #378ADD;
+    .clef-btn.active { background: #E6F1FB; color: #185FA5; border-color: #378ADD; }
+
+    .hs-toast {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: #FAEEDA; border: 0.5px solid #EF9F27; border-radius: 8px;
+      padding: 5px 14px; font-size: 12px; color: #633806; white-space: nowrap;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 10;
     }
+    .hs-toast.show { opacity: 1; }
+
     svg#staff-svg { width: 100%; display: block; }
 
-    /* Choices */
-    .choices {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+    .key-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .key-row label { font-size: 12px; color: #888780; }
+    .key-select {
+      font-family: inherit; font-size: 12px; color: #1a1a18;
+      background: #fff; border: 0.5px solid #b4b2a9; border-radius: 999px;
+      padding: 3px 22px 3px 10px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
     }
+
+    .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .choice-btn {
-      background: #fff;
-      border: 0.5px solid #b4b2a9;
-      border-radius: 8px;
-      padding: 10px 4px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.12s;
-      font-family: inherit;
-      color: #1a1a18;
+      background: #fff; border: 0.5px solid #b4b2a9; border-radius: 8px;
+      padding: 10px 4px; font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background 0.12s; font-family: inherit; color: #1a1a18;
     }
-    .choice-btn:hover { background: #f1efe8; }
+    .choice-btn:hover:not(:disabled) { background: #f1efe8; }
     .choice-btn.correct { background: #EAF3DE; color: #3B6D11; border-color: #639922; }
     .choice-btn.wrong   { background: #FCEBEB; color: #A32D2D; border-color: #E24B4A; }
+    .choice-btn:disabled { cursor: default; }
 
-    /* Feedback */
-    .feedback {
-      min-height: 22px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #888780;
-      text-align: center;
-    }
+    .feedback { min-height: 22px; font-size: 14px; font-weight: 500; color: #888780; text-align: center; }
 
-    /* Next button */
-    .next-btn {
-      width: 100%;
-      padding: 11px;
-      border-radius: 8px;
-      background: transparent;
-      border: 0.5px solid #b4b2a9;
-      font-size: 14px;
-      cursor: pointer;
-      font-family: inherit;
-      color: #1a1a18;
-      display: none;
-      transition: background 0.12s;
+    .game-over {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px;
+      padding: 2rem; text-align: center;
     }
-    .next-btn:hover { background: #f1efe8; }
+    .game-over h2 { font-size: 18px; font-weight: 500; }
+    .final-score { font-size: 52px; font-weight: 500; color: #185FA5; line-height: 1; }
+    .game-over .sub { font-size: 13px; color: #888780; }
+    .game-over .new-best { font-size: 13px; color: #854F0B; font-weight: 500; }
+    .restart-btn {
+      margin-top: 4px; padding: 10px 28px; border-radius: 8px;
+      background: #185FA5; color: #fff; border: none;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+    }
+    .restart-btn:hover { background: #0C447C; }
 
-    /* High score banner */
-    .high-score-banner {
-      background: #FAEEDA;
-      border: 0.5px solid #EF9F27;
-      border-radius: 8px;
-      padding: 8px 14px;
-      font-size: 13px;
-      color: #633806;
-      text-align: center;
-      display: none;
-    }
-
-    /* Cheat sheet */
-    details {
-      background: #fff;
-      border: 0.5px solid #d3d1c7;
-      border-radius: 12px;
-      overflow: hidden;
-    }
+    details { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; overflow: hidden; }
     summary {
-      padding: 12px 16px;
-      font-size: 13px;
-      color: #5f5e5a;
-      cursor: pointer;
-      list-style: none;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      user-select: none;
+      padding: 12px 16px; font-size: 13px; color: #5f5e5a; cursor: pointer;
+      list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;
     }
     summary::-webkit-details-marker { display: none; }
     summary::after { content: '▸'; font-size: 11px; color: #888780; }
     details[open] summary::after { content: '▾'; }
-
-    .cheat-sheet {
-      padding: 0 16px 16px;
-    }
+    .cheat-sheet { padding: 0 16px 16px; }
     .cheat-section { margin-bottom: 14px; }
-    .cheat-section h3 {
-      font-size: 12px;
-      font-weight: 500;
-      color: #888780;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-    }
-    .note-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-    }
-    .note-pill {
-      background: #f1efe8;
-      border-radius: 6px;
-      padding: 5px 8px;
-      font-size: 12px;
-      color: #444441;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .cheat-section h3 { font-size: 12px; font-weight: 500; color: #888780; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .note-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .note-pill { background: #f1efe8; border-radius: 6px; padding: 5px 8px; font-size: 12px; color: #444441; display: flex; justify-content: space-between; }
     .note-pill span { color: #888780; font-size: 11px; }
-
-    .mnemonic {
-      background: #E6F1FB;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 13px;
-      color: #0C447C;
-      line-height: 1.6;
-    }
+    .mnemonic { background: #E6F1FB; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #0C447C; line-height: 1.6; }
     .mnemonic strong { font-weight: 500; }
 
-    footer {
-      margin-top: 2rem;
-      font-size: 12px;
-      color: #b4b2a9;
-    }
+    footer { margin-top: 2rem; font-size: 12px; color: #b4b2a9; }
   </style>
 </head>
 <body>
 
 <h1>Music Note Trainer</h1>
-
 <div class="container">
-
-  <div class="high-score-banner" id="hs-banner"></div>
 
   <div class="score-row">
     <div class="metric"><div class="metric-label">Score</div><div class="metric-val" id="score">0</div></div>
     <div class="metric"><div class="metric-label">Streak</div><div class="metric-val" id="streak">0</div></div>
-    <div class="metric"><div class="metric-label">Best</div><div class="metric-val" id="best">0</div></div>
+    <div class="metric"><div class="metric-label">Best</div><div class="metric-val" id="best">—</div></div>
+    <div class="metric"><div class="metric-label">Time</div><div class="metric-val" id="timer">60</div></div>
   </div>
 
+  <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+
   <div class="staff-card">
+    <div class="hs-toast" id="hs-toast">New high score!</div>
     <div class="staff-header">
       <span>What note is this?</span>
       <div class="clef-toggle">
@@ -234,15 +138,25 @@
     <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
 
+  <div class="key-row">
+    <label for="key-select">Key signature:</label>
+    <select class="key-select" id="key-select" onchange="onKeyChange()"></select>
+  </div>
+
   <div class="choices" id="choices"></div>
   <div class="feedback" id="feedback"></div>
-  <button class="next-btn" id="next-btn" onclick="nextQuestion()">Next note →</button>
 
-  <!-- Cheat sheet -->
+  <div class="game-over" id="game-over">
+    <h2>Time's up!</h2>
+    <div class="final-score" id="final-score">0</div>
+    <div class="sub">notes correct in 60 seconds</div>
+    <div class="new-best" id="new-best-msg" style="display:none">⭐ New high score!</div>
+    <button class="restart-btn" onclick="startGame()">Play again</button>
+  </div>
+
   <details>
     <summary>Note reference guide</summary>
     <div class="cheat-sheet">
-
       <div class="cheat-section">
         <h3>Treble clef — lines (bottom to top)</h3>
         <div class="note-grid">
@@ -253,7 +167,6 @@
           <div class="note-pill">F5 <span>5th line</span></div>
         </div>
       </div>
-
       <div class="cheat-section">
         <h3>Treble clef — spaces (bottom to top)</h3>
         <div class="note-grid">
@@ -263,7 +176,6 @@
           <div class="note-pill">E5 <span>4th space</span></div>
         </div>
       </div>
-
       <div class="cheat-section">
         <h3>Bass clef — lines (bottom to top)</h3>
         <div class="note-grid">
@@ -274,7 +186,6 @@
           <div class="note-pill">A3 <span>5th line</span></div>
         </div>
       </div>
-
       <div class="cheat-section">
         <h3>Bass clef — spaces (bottom to top)</h3>
         <div class="note-grid">
@@ -284,7 +195,6 @@
           <div class="note-pill">G3 <span>4th space</span></div>
         </div>
       </div>
-
       <div class="cheat-section">
         <h3>Memory tricks</h3>
         <div class="mnemonic">
@@ -294,160 +204,221 @@
           <strong>Bass spaces:</strong> All Cows Eat Grass
         </div>
       </div>
-
     </div>
   </details>
 
 </div>
-
 <footer>Built with HTML + JS &middot; No frameworks needed</footer>
 
 <script>
-  const TREBLE = [
-    {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},
-    {name:'A4',step:3},{name:'B4',step:4},{name:'C5',step:5},
-    {name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
-  ];
-  const BASS = [
-    {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},
-    {name:'C3',step:3},{name:'D3',step:4},{name:'E3',step:5},
-    {name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
-  ];
+const KEY_SIGS = [
+  { label: 'C major / A minor',   acc: {} },
+  { label: 'G major / E minor',   acc: { F:'#' } },
+  { label: 'D major / B minor',   acc: { F:'#', C:'#' } },
+  { label: 'A major / F# minor',  acc: { F:'#', C:'#', G:'#' } },
+  { label: 'E major / C# minor',  acc: { F:'#', C:'#', G:'#', D:'#' } },
+  { label: 'F major / D minor',   acc: { B:'b' } },
+  { label: 'Bb major / G minor',  acc: { B:'b', E:'b' } },
+  { label: 'Eb major / C minor',  acc: { B:'b', E:'b', A:'b' } },
+  { label: 'Ab major / F minor',  acc: { B:'b', E:'b', A:'b', D:'b' } },
+];
 
-  let clef = 'treble';
-  let score = 0, streak = 0;
-  let best = parseInt(localStorage.getItem('mntr-best') || '0');
-  let current = null, answered = false;
+const TREBLE_BASE = [
+  {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},
+  {name:'A4',step:3},{name:'B4',step:4},{name:'C5',step:5},
+  {name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
+];
+const BASS_BASE = [
+  {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},
+  {name:'C3',step:3},{name:'D3',step:4},{name:'E3',step:5},
+  {name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
+];
 
-  document.getElementById('best').textContent = best;
+function applyKey(base, acc) {
+  return base.map(n => {
+    const letter = n.name[0];
+    return acc[letter] ? { name: letter + acc[letter] + n.name.slice(1), step: n.step } : n;
+  });
+}
 
-  function setClef(c) {
-    clef = c;
-    document.getElementById('btn-treble').className = 'clef-btn' + (c === 'treble' ? ' active' : '');
-    document.getElementById('btn-bass').className   = 'clef-btn' + (c === 'bass'   ? ' active' : '');
-    nextQuestion();
+let clef = 'treble', keyIndex = 0;
+let score = 0, streak = 0;
+let current = null, answered = false;
+let timeLeft = 60, timerInterval = null, gameActive = false;
+
+// Populate key selector
+const ks = document.getElementById('key-select');
+KEY_SIGS.forEach((k, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = k.label; ks.appendChild(o);
+});
+
+function bestStorageKey() {
+  return 'mntr2-' + KEY_SIGS[keyIndex].label.replace(/[\s/]+/g,'_') + '-' + clef;
+}
+function loadBest() {
+  const b = parseInt(localStorage.getItem(bestStorageKey()) || '0');
+  document.getElementById('best').textContent = b > 0 ? b : '—';
+  return b;
+}
+
+function onKeyChange() { keyIndex = parseInt(ks.value); gameActive ? nextQuestion() : loadBest(); }
+function setClef(c) {
+  clef = c;
+  document.getElementById('btn-treble').className = 'clef-btn' + (c === 'treble' ? ' active' : '');
+  document.getElementById('btn-bass').className   = 'clef-btn' + (c === 'bass'   ? ' active' : '');
+  gameActive ? nextQuestion() : loadBest();
+}
+
+function startGame() {
+  score = 0; streak = 0; timeLeft = 60; answered = false; gameActive = true;
+  document.getElementById('score').textContent = '0';
+  document.getElementById('streak').textContent = '0';
+  document.getElementById('timer').textContent = '60';
+  document.getElementById('timer').className = 'metric-val';
+  document.getElementById('timer-bar').style.width = '100%';
+  document.getElementById('timer-bar').className = 'timer-bar';
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('choices').style.display = 'grid';
+  document.getElementById('feedback').textContent = '';
+  loadBest();
+  nextQuestion();
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick() {
+  timeLeft--;
+  document.getElementById('timer').textContent = timeLeft;
+  document.getElementById('timer-bar').style.width = (timeLeft / 60 * 100) + '%';
+  if (timeLeft <= 10) {
+    document.getElementById('timer').className = 'metric-val timer-warning';
+    document.getElementById('timer-bar').className = 'timer-bar warning';
   }
+  if (timeLeft <= 0) endGame();
+}
 
-  function noteSet() { return clef === 'treble' ? TREBLE : BASS; }
+function endGame() {
+  clearInterval(timerInterval);
+  gameActive = false;
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('feedback').textContent = '';
+  const prevBest = parseInt(localStorage.getItem(bestStorageKey()) || '0');
+  const isNewBest = score > prevBest;
+  if (isNewBest) localStorage.setItem(bestStorageKey(), score);
+  document.getElementById('final-score').textContent = score;
+  const msg = document.getElementById('new-best-msg');
+  msg.style.display = (isNewBest && score > 0) ? 'block' : 'none';
+  document.getElementById('game-over').style.display = 'flex';
+  loadBest();
+}
 
-  function nextQuestion() {
-    answered = false;
-    document.getElementById('feedback').textContent = '';
-    document.getElementById('next-btn').style.display = 'none';
-    document.getElementById('hs-banner').style.display = 'none';
-    const notes = noteSet();
-    current = notes[Math.floor(Math.random() * notes.length)];
-    drawStaff(current);
-    buildChoices(current, notes);
-  }
+function noteSet() { return applyKey(clef === 'treble' ? TREBLE_BASE : BASS_BASE, KEY_SIGS[keyIndex].acc); }
 
-  function noteYPos(step, topLine, gap) {
-    return topLine + 4 * gap - step * (gap / 2);
-  }
+function nextQuestion() {
+  answered = false;
+  document.getElementById('feedback').textContent = '';
+  const notes = noteSet();
+  current = notes[Math.floor(Math.random() * notes.length)];
+  drawStaff(current);
+  buildChoices(current, notes);
+}
 
-  function drawStaff(note) {
-    const svg = document.getElementById('staff-svg');
-    svg.innerHTML = '';
-    const topLine = 25, gap = 12;
-    const ns = 'http://www.w3.org/2000/svg';
+function buildChoices(correct, notes) {
+  const pool = notes.filter(n => n.name !== correct.name).sort(() => Math.random() - 0.5).slice(0, 3);
+  const opts = [...pool.map(n => n.name), correct.name].sort(() => Math.random() - 0.5);
+  const container = document.getElementById('choices');
+  container.innerHTML = '';
+  opts.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = name;
+    btn.onclick = () => checkAnswer(name, btn);
+    container.appendChild(btn);
+  });
+}
 
-    function el(tag, attrs) {
-      const e = document.createElementNS(ns, tag);
-      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-      return e;
-    }
-
-    for (let i = 0; i < 5; i++) {
-      const y = topLine + i * gap;
-      svg.appendChild(el('line', {x1:40, x2:300, y1:y, y2:y, stroke:'#888', 'stroke-width':'1'}));
-    }
-
-    const clefText = el('text', {
-      x: '8',
-      y: clef === 'treble' ? topLine + gap * 4 + 4 : topLine + gap * 2,
-      'font-size': clef === 'treble' ? '52' : '30',
-      fill: '#666'
-    });
-    clefText.textContent = clef === 'treble' ? '𝄞' : '𝄢';
-    svg.appendChild(clefText);
-
-    const cy = noteYPos(note.step, topLine, gap);
-    const cx = 170, r = 7;
-
-    if (note.step === 0) {
-      svg.appendChild(el('line', {x1:cx-r-4, x2:cx+r+4, y1:cy, y2:cy, stroke:'#444', 'stroke-width':'1.5'}));
-    }
-    if (note.step === 8) {
-      const ly = topLine - gap;
-      svg.appendChild(el('line', {x1:cx-r-4, x2:cx+r+4, y1:ly, y2:ly, stroke:'#444', 'stroke-width':'1.5'}));
-    }
-
-    const noteEl = el('ellipse', {
-      cx, cy, rx: r, ry: Math.round(r * 0.72),
-      fill: '#185FA5',
-      transform: `rotate(-15, ${cx}, ${cy})`
-    });
-    svg.appendChild(noteEl);
-
-    const stemUp = note.step < 4;
-    svg.appendChild(el('line', {
-      x1: stemUp ? cx + r - 1 : cx - r + 1,
-      x2: stemUp ? cx + r - 1 : cx - r + 1,
-      y1: cy,
-      y2: stemUp ? cy - 32 : cy + 32,
-      stroke: '#185FA5', 'stroke-width': '1.5'
-    }));
-  }
-
-  function buildChoices(correct, notes) {
-    const pool = notes.filter(n => n.name !== correct.name).sort(() => Math.random() - 0.5).slice(0, 3);
-    const opts = [...pool.map(n => n.name), correct.name].sort(() => Math.random() - 0.5);
-    const container = document.getElementById('choices');
-    container.innerHTML = '';
-    opts.forEach(name => {
-      const btn = document.createElement('button');
-      btn.className = 'choice-btn';
-      btn.textContent = name;
-      btn.onclick = () => checkAnswer(name, btn);
-      container.appendChild(btn);
-    });
-  }
-
-  function checkAnswer(chosen, btn) {
-    if (answered) return;
-    answered = true;
-    const fb = document.getElementById('feedback');
-
-    document.querySelectorAll('.choice-btn').forEach(b => {
-      if (b.textContent === current.name) b.classList.add('correct');
-    });
-
-    if (chosen === current.name) {
-      score++; streak++;
-      fb.textContent = streak >= 3 ? `Correct! ${streak} in a row! 🔥` : 'Correct!';
-      fb.style.color = '#3B6D11';
-
-      if (score > best) {
-        best = score;
-        localStorage.setItem('mntr-best', best);
-        document.getElementById('best').textContent = best;
-        const banner = document.getElementById('hs-banner');
-        banner.textContent = `New high score: ${best}!`;
-        banner.style.display = 'block';
-      }
-    } else {
-      btn.classList.add('wrong');
-      streak = 0;
-      fb.textContent = `Not quite — it was ${current.name}.`;
-      fb.style.color = '#A32D2D';
-    }
-
+function checkAnswer(chosen, btn) {
+  if (answered || !gameActive) return;
+  answered = true;
+  document.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === current.name) b.classList.add('correct');
+  });
+  const fb = document.getElementById('feedback');
+  if (chosen === current.name) {
+    score++; streak++;
     document.getElementById('score').textContent = score;
     document.getElementById('streak').textContent = streak;
-    document.getElementById('next-btn').style.display = 'block';
+    fb.textContent = streak >= 3 ? 'Correct! ' + streak + ' in a row!' : 'Correct!';
+    fb.style.color = '#3B6D11';
+    const prev = parseInt(localStorage.getItem(bestStorageKey()) || '0');
+    if (score > prev) {
+      localStorage.setItem(bestStorageKey(), score);
+      document.getElementById('best').textContent = score;
+      showToast('New high score!');
+    }
+  } else {
+    btn.classList.add('wrong');
+    streak = 0;
+    document.getElementById('streak').textContent = '0';
+    fb.textContent = 'Not quite — it was ' + current.name + '.';
+    fb.style.color = '#A32D2D';
+  }
+  setTimeout(() => { if (gameActive) nextQuestion(); }, 600);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('hs-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function noteYPos(step, topLine, gap) { return topLine + 4 * gap - step * (gap / 2); }
+
+function drawStaff(note) {
+  const svg = document.getElementById('staff-svg');
+  svg.innerHTML = '';
+  const topLine = 25, gap = 12, ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text) {
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = topLine + i * gap;
+    svg.appendChild(el('line', {x1:40,x2:300,y1:y,y2:y,stroke:'#888','stroke-width':'1'}));
+  }
+  svg.appendChild(el('text', {
+    x:'8', y: clef==='treble' ? topLine+gap*4+4 : topLine+gap*2,
+    'font-size': clef==='treble'?'52':'30', fill:'#666'
+  }, clef==='treble'?'𝄞':'𝄢'));
+
+  const cy = noteYPos(note.step, topLine, gap), cx = 170, r = 7;
+  if (note.step === 0)
+    svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:cy,y2:cy,stroke:'#444','stroke-width':'1.5'}));
+  if (note.step === 8) {
+    const ly = topLine - gap;
+    svg.appendChild(el('line',{x1:cx-r-4,x2:cx+r+4,y1:ly,y2:ly,stroke:'#444','stroke-width':'1.5'}));
   }
 
-  nextQuestion();
+  const accidental = note.name.length > 2 ? note.name[1] : null;
+  if (accidental)
+    svg.appendChild(el('text',{x:cx-20,y:cy+5,'font-size':'16',fill:'#185FA5','font-weight':'500'}, accidental==='#'?'♯':'♭'));
+
+  svg.appendChild(el('ellipse',{cx,cy,rx:r,ry:Math.round(r*0.72),fill:'#185FA5',transform:`rotate(-15,${cx},${cy})`}));
+  const stemUp = note.step < 4;
+  svg.appendChild(el('line',{
+    x1:stemUp?cx+r-1:cx-r+1, x2:stemUp?cx+r-1:cx-r+1,
+    y1:cy, y2:stemUp?cy-32:cy+32,
+    stroke:'#185FA5','stroke-width':'1.5'
+  }));
+}
+
+loadBest();
+startGame();
 </script>
 </body>
 </html>
