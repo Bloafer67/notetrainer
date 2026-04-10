@@ -141,14 +141,36 @@
 
     .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .choice-btn {
-      background: var(--surface); border: 0.5px solid var(--border2); border-radius: 8px;
+      background: var(--green-bg); border: 0.5px solid var(--green-border); border-radius: 8px;
       padding: 10px 4px; font-size: 14px; font-weight: 500; cursor: pointer;
-      font-family: inherit; color: var(--text); transition: background 0.12s;
+      font-family: inherit; color: var(--green-text); transition: background 0.12s, transform 0.08s;
     }
-    .choice-btn:hover:not(:disabled) { background: var(--surface2); }
+    .choice-btn:hover:not(:disabled) { filter: brightness(0.95); }
+    .choice-btn:active:not(:disabled) { transform: scale(0.96); }
     .choice-btn.correct { background: var(--green-bg); color: var(--green-text); border-color: var(--green-border); }
     .choice-btn.wrong   { background: var(--red-bg);   color: var(--red-text);   border-color: var(--red-border); }
-    .choice-btn:disabled { cursor: default; }
+    .choice-btn:disabled { cursor: default; filter: none; }
+
+    /* Answer toast — floats over the staff */
+    .answer-toast {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+      background: var(--green-bg); border: 0.5px solid var(--green-border);
+      color: var(--green-text); border-radius: 10px;
+      padding: 8px 20px; font-size: 18px; font-weight: 500;
+      opacity: 0; pointer-events: none; z-index: 20;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .answer-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .answer-toast.wrong { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+
+    /* Mute button */
+    .mute-btn {
+      background: var(--surface); border: 0.5px solid var(--border2);
+      border-radius: 999px; padding: 5px 12px; font-size: 12px;
+      color: var(--text2); cursor: pointer; font-family: inherit;
+      transition: background 0.15s;
+    }
+    .mute-btn:hover { background: var(--surface2); }
 
     .feedback { min-height: 22px; font-size: 14px; font-weight: 500; color: var(--text3); text-align: center; }
 
@@ -235,7 +257,10 @@
 
 <div class="top-bar">
   <h1>Music Note Trainer</h1>
-  <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()">🌙 Dark mode</button>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊 Sound</button>
+    <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()">🌙 Dark mode</button>
+  </div>
 </div>
 
 <div class="container">
@@ -258,6 +283,7 @@
 
     <div class="staff-card">
       <div class="hs-toast" id="hs-toast">New high score!</div>
+      <div class="answer-toast" id="answer-toast"></div>
       <div class="staff-header">
         <span>What note is this?</span>
         <div class="clef-toggle">
@@ -273,6 +299,8 @@
       <label for="key-select">Key:</label>
       <select class="key-select" id="key-select" onchange="onKeyChange()"></select>
     </div>
+
+
 
     <div class="choices" id="choices"></div>
     <div class="feedback" id="feedback"></div>
@@ -382,6 +410,7 @@
 </div>
 <footer>Built with HTML + JS &middot; No frameworks needed</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 <script>
 // ── Theme ─────────────────────────────────────────────────────────────────
 let darkMode = localStorage.getItem('mntr-dark') === '1';
@@ -391,6 +420,75 @@ function applyTheme() {
   if (current) drawStaff(current);
 }
 function toggleDark() { darkMode = !darkMode; localStorage.setItem('mntr-dark', darkMode ? '1' : '0'); applyTheme(); }
+
+// ── Audio ─────────────────────────────────────────────────────────────────
+let muted = localStorage.getItem('mntr-muted') === null ? true : localStorage.getItem('mntr-muted') === '1';
+let audioCtx = null;
+
+function toggleMute() {
+  muted = !muted;
+  localStorage.setItem('mntr-muted', muted ? '1' : '0');
+  document.getElementById('mute-btn').textContent = muted ? '🔇 Muted' : '🔊 Sound';
+}
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Note name → frequency (A4 = 440Hz)
+const NOTE_FREQS = {
+  'C2':65.41,'D2':73.42,'E2':82.41,'F2':87.31,'G2':98.00,'A2':110.00,'B2':123.47,
+  'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196.00,'A3':220.00,'B3':246.94,
+  'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392.00,'A4':440.00,'B4':493.88,
+  'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99,'A5':880.00,'B5':987.77,
+  'C#2':69.30,'D#2':77.78,'F#2':92.50,'G#2':103.83,'A#2':116.54,
+  'C#3':138.59,'D#3':155.56,'F#3':185.00,'G#3':207.65,'A#3':233.08,
+  'C#4':277.18,'D#4':311.13,'F#4':369.99,'G#4':415.30,'A#4':466.16,
+  'C#5':554.37,'D#5':622.25,'F#5':739.99,
+  'Bb2':116.54,'Eb2':77.78,'Ab2':103.83,'Db2':69.30,'Gb2':92.50,
+  'Bb3':233.08,'Eb3':155.56,'Ab3':207.65,'Db3':138.59,'Gb3':185.00,
+  'Bb4':466.16,'Eb4':311.13,'Ab4':415.30,'Db4':277.18,'Gb4':369.99,
+  'Bb5':932.33,'Eb5':622.25,'Ab5':830.61,
+};
+
+const PIANO_SYNTH_CONFIG = {
+  oscillator: { type: 'triangle' },
+  envelope: { attack: 0.002, decay: 0.3, sustain: 0.1, release: 1.2 },
+  volume: -6
+};
+
+let activeSynth = null;
+
+function getSynth() {
+  if (!window.Tone) return null;
+  if (activeSynth) { try { activeSynth.dispose(); } catch(e) {} }
+  activeSynth = new Tone.Synth(PIANO_SYNTH_CONFIG).toDestination();
+  return activeSynth;
+}
+
+async function playNote(noteName) {
+  if (muted || !window.Tone) return;
+  const freq = NOTE_FREQS[noteName];
+  if (!freq) return;
+  try {
+    await Tone.start();
+    const synth = getSynth();
+    if (!synth) return;
+    synth.triggerAttackRelease(freq, '8n');
+  } catch(e) {}
+}
+
+// ── Answer toast ──────────────────────────────────────────────────────────
+let answerToastTimer = null;
+function showAnswerToast(text, isCorrect) {
+  const t = document.getElementById('answer-toast');
+  t.textContent = text;
+  t.className = 'answer-toast' + (isCorrect ? '' : ' wrong');
+  t.classList.add('show');
+  clearTimeout(answerToastTimer);
+  answerToastTimer = setTimeout(() => t.classList.remove('show'), 700);
+}
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(name) {
@@ -544,6 +642,7 @@ function buildChoices(correct, notes) {
 function checkAnswer(chosen, btn) {
   if (answered || !gameActive) return;
   answered = true;
+  playNote(current.name);
   document.querySelectorAll('.choice-btn').forEach(b => {
     b.disabled = true;
     if (b.textContent === current.name) b.classList.add('correct');
@@ -555,6 +654,7 @@ function checkAnswer(chosen, btn) {
     document.getElementById('streak').textContent = streak;
     fb.textContent = streak >= 3 ? 'Correct! ' + streak + ' in a row!' : 'Correct!';
     fb.style.color = 'var(--green-text)';
+    showAnswerToast('✓', true);
     const prev = parseInt(localStorage.getItem(bestKey())||'0');
     if (score > prev) { localStorage.setItem(bestKey(), score); document.getElementById('best').textContent = score; showToast('New high score!'); }
   } else {
@@ -562,6 +662,7 @@ function checkAnswer(chosen, btn) {
     document.getElementById('streak').textContent = '0';
     fb.textContent = 'Not quite — it was ' + current.name + '.';
     fb.style.color = 'var(--red-text)';
+    showAnswerToast(current.name, false);
   }
   setTimeout(() => { if (gameActive) nextQuestion(); }, 600);
 }
@@ -734,6 +835,7 @@ function escHtml(s) {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 applyTheme();
+document.getElementById('mute-btn').textContent = muted ? '🔇 Muted' : '🔊 Sound';
 loadBest();
 startGame();
 fetchLeaderboard();
