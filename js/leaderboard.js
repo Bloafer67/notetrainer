@@ -1,21 +1,16 @@
 // ── leaderboard.js ────────────────────────────────────────────────────────
-// Handles: Supabase connection, saving scores, fetching + rendering leaderboard
-// Features: per-game-mode tabs, key filters, pagination
-// Depends on: clef, keyIndex, KEY_SIGS, lastScore, gameDuration, gameMode
+// Features: per-game mode, top-10 per board, clef+key+duration breakdown,
+//           highlight your saved row, Save → View button
 
 const SB_URL = 'https://mgkgyzkfdnptfpnrhczu.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1na2d5emtmZG5wdGZwbnJoY3p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyODEsImV4cCI6MjA5MTQyNTI4MX0.qp95iZvyI33i6jiwxXXFf0cClyg0pSNT2-3YFEII18g';
-
-const LB_PAGE_SIZE = 10;
 
 async function sbFetch(path, options = {}) {
   const res = await fetch(SB_URL + path, {
     ...options,
     headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': options.prefer || '',
+      'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json', 'Prefer': options.prefer || '',
       ...options.headers,
     },
   });
@@ -24,11 +19,36 @@ async function sbFetch(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-let lbFilter   = 'all';
-let lbGameMode = 'name-the-notes';
-let lbPage     = 0;
-let lbCache    = [];
+// ── State ─────────────────────────────────────────────────────────────────
+let lbCache       = [];
+let lbGameMode    = 'name-the-notes';
+let lbHighlightId = null; // Supabase row id of the score we just saved
 
+// ── Board key ─────────────────────────────────────────────────────────────
+// A "board" is uniquely identified by: game + clef + key + duration
+// This lets us show a focused top-10 that's actually meaningful to compare
+function boardKey(entry) {
+  return [
+    entry.game     || 'name-the-notes',
+    entry.clef     || 'Treble',
+    entry.key      || 'C major',
+    entry.duration || 60,
+  ].join('|');
+}
+
+function currentBoardKey() {
+  const clefLabel = clef === 'guitar'
+    ? 'Guitar (8vb)'
+    : clef.charAt(0).toUpperCase() + clef.slice(1);
+  return [
+    window.gameMode || 'name-the-notes',
+    clefLabel,
+    KEY_SIGS[keyIndex].label,
+    gameDuration,
+  ].join('|');
+}
+
+// ── Save score ────────────────────────────────────────────────────────────
 async function saveToLeaderboard() {
   const nameEl = document.getElementById('player-name');
   const name   = nameEl.value.trim() || 'Anonymous';
@@ -39,46 +59,45 @@ async function saveToLeaderboard() {
     : clef.charAt(0).toUpperCase() + clef.slice(1);
 
   const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Saving…';
-  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
 
   try {
-    await sbFetch('/rest/v1/leaderboard', {
-      method: 'POST',
-      prefer: 'return=minimal',
+    const result = await sbFetch('/rest/v1/leaderboard', {
+      method: 'POST', prefer: 'return=representation',
       body: JSON.stringify({
-        name,
-        score: lastScore,
-        clef:  clefLabel,
-        key:   KEY_SIGS[keyIndex].label,
-        game:  window.gameMode || 'name-the-notes',
+        name, score: lastScore,
+        clef:     clefLabel,
+        key:      KEY_SIGS[keyIndex].label,
+        game:     window.gameMode || 'name-the-notes',
+        duration: gameDuration,
       }),
     });
+    // Store the ID of the row we just saved so we can highlight it
+    lbHighlightId = result?.[0]?.id || null;
     showToast('Saved!');
-    saveBtn.textContent = 'Saved ✓';
-    saveBtn.disabled = true;
+    saveBtn.textContent = 'View leaderboard →';
+    saveBtn.disabled = false;
+    saveBtn.onclick = () => {
+      switchTab('leaderboard');
+      fetchLeaderboard();
+    };
   } catch (e) {
     console.error('Save error:', e.message);
-    saveBtn.textContent = 'Save';
-    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save'; saveBtn.disabled = false;
     saveBtn.onclick = saveToLeaderboard;
     showToast('Could not save — try again');
-    return;
   }
-  fetchLeaderboard();
 }
 
+// ── Fetch ─────────────────────────────────────────────────────────────────
 async function fetchLeaderboard() {
   lbGameMode = window.gameMode || 'name-the-notes';
-  lbFilter   = 'all';
-  lbPage     = 0;
   try {
     const data = await sbFetch(
-      '/rest/v1/leaderboard?select=*&order=score.desc&limit=500',
+      '/rest/v1/leaderboard?select=*&order=score.desc&limit=2000',
       { method: 'GET', prefer: 'return=representation' }
     );
-    const all = data || [];
-    lbCache = all.filter(e => (e.game || 'name-the-notes') === lbGameMode);
+    lbCache = data || [];
     renderLeaderboard();
   } catch (e) {
     document.getElementById('lb-list').innerHTML =
@@ -86,34 +105,16 @@ async function fetchLeaderboard() {
   }
 }
 
-async function fetchLeaderboardForMode(mode) {
-  lbGameMode = mode;
-  lbFilter   = 'all';
-  lbPage     = 0;
-  try {
-    const data = await sbFetch(
-      '/rest/v1/leaderboard?select=*&order=score.desc&limit=500',
-      { method: 'GET', prefer: 'return=representation' }
-    );
-    const all = data || [];
-    lbCache = all.filter(e => (e.game || 'name-the-notes') === mode);
-    renderLeaderboard();
-  } catch (e) {
-    document.getElementById('lb-list').innerHTML =
-      '<div class="lb-empty">Could not load scores.</div>';
-  }
-}
-
+// ── Render ────────────────────────────────────────────────────────────────
 function renderLeaderboard() {
   renderGameModeTabs();
-  renderKeyFilters();
-  renderPage();
+  renderCurrentBoard();
 }
 
 function renderGameModeTabs() {
-  const tabsEl = document.getElementById('lb-game-tabs');
-  if (!tabsEl) return;
-  tabsEl.innerHTML = '';
+  const el = document.getElementById('lb-game-tabs');
+  if (!el) return;
+  el.innerHTML = '';
   [
     { value: 'name-the-notes', label: '🎼 Name the Notes' },
     { value: 'play-the-notes', label: '🎸 Play the Notes' },
@@ -121,90 +122,123 @@ function renderGameModeTabs() {
     const btn = document.createElement('button');
     btn.className = 'lb-filter' + (lbGameMode === value ? ' active' : '');
     btn.textContent = label;
-    btn.onclick = () => fetchLeaderboardForMode(value);
-    tabsEl.appendChild(btn);
+    btn.onclick = () => { lbGameMode = value; renderCurrentBoard(); };
+    el.appendChild(btn);
   });
 }
 
-function renderKeyFilters() {
-  const fEl = document.getElementById('lb-filters');
-  if (!fEl) return;
-  const keys = ['all', ...new Set(lbCache.map(e => e.key))];
-  fEl.innerHTML = '';
-  keys.forEach(k => {
-    const btn = document.createElement('button');
-    btn.className = 'lb-filter' + (lbFilter === k ? ' active' : '');
-    btn.textContent = k === 'all' ? 'All keys' : k;
-    btn.onclick = () => { lbFilter = k; lbPage = 0; renderPage(); };
-    fEl.appendChild(btn);
-  });
-}
+// ── Render the board matching current game settings ────────────────────────
+function renderCurrentBoard() {
+  const key = currentBoardKey();
+  // All entries for the current board, already sorted by score desc
+  const board = lbCache.filter(e => boardKey(e) === key).slice(0, 10);
 
-function renderPage() {
-  const filtered = lbFilter === 'all'
-    ? lbCache
-    : lbCache.filter(e => e.key === lbFilter);
+  // Board description header
+  const clefLabel = clef === 'guitar'
+    ? 'Guitar (8vb)'
+    : clef.charAt(0).toUpperCase() + clef.slice(1);
+  const desc = `${KEY_SIGS[keyIndex].label} · ${clefLabel} · ${gameDuration}s`;
+  const headerEl = document.getElementById('lb-board-desc');
+  if (headerEl) headerEl.textContent = desc;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / LB_PAGE_SIZE));
-  if (lbPage >= totalPages) lbPage = totalPages - 1;
+  // Filter pills: show other clef/key/duration combos for this game mode
+  renderBoardFilters();
 
-  const pageRows = filtered.slice(lbPage * LB_PAGE_SIZE, (lbPage + 1) * LB_PAGE_SIZE);
   const list = document.getElementById('lb-list');
   list.innerHTML = '';
 
-  if (!filtered.length) {
-    list.innerHTML = '<div class="lb-empty">No scores yet — play a round and save your name!</div>';
-    renderPagination(0, 1);
+  if (!board.length) {
+    list.innerHTML = '<div class="lb-empty">No scores yet for this combination — be the first!</div>';
     return;
   }
 
-  pageRows.forEach((e, i) => {
-    const globalRank = lbPage * LB_PAGE_SIZE + i;
+  board.forEach((e, i) => {
     const row = document.createElement('div');
-    row.className = 'lb-row';
-    const rankClass = globalRank===0?'gold':globalRank===1?'silver':globalRank===2?'bronze':'';
-    const medal     = globalRank===0?'🥇':globalRank===1?'🥈':globalRank===2?'🥉':globalRank+1;
+    const isHighlighted = e.id && e.id === lbHighlightId;
+    row.className = 'lb-row' + (isHighlighted ? ' lb-row-highlight' : '');
+    const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal     = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
     const date      = new Date(e.created_at).toLocaleDateString();
     row.innerHTML = `
       <div class="lb-rank ${rankClass}">${medal}</div>
       <div>
-        <div class="lb-name">${escHtml(e.name)}</div>
-        <div class="lb-meta">${escHtml(e.clef)} · ${escHtml(e.key)} · ${date}</div>
+        <div class="lb-name">${escHtml(e.name)}${isHighlighted ? ' <span class="lb-you">you</span>' : ''}</div>
+        <div class="lb-meta">${escHtml(e.clef||'')} · ${escHtml(e.key||'')} · ${e.duration||60}s · ${date}</div>
+      </div>
+      <div class="lb-score">${e.score}</div>`;
+    list.appendChild(row);
+
+    // Scroll highlighted row into view
+    if (isHighlighted) setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  });
+}
+
+// ── Board filter pills ─────────────────────────────────────────────────────
+// Show distinct boards that exist for the current game mode
+function renderBoardFilters() {
+  const el = document.getElementById('lb-filters');
+  if (!el) return;
+  const myKey = currentBoardKey();
+
+  // Get unique board keys for this game mode
+  const boardsForMode = lbCache.filter(e =>
+    (e.game || 'name-the-notes') === lbGameMode
+  );
+  const uniqueKeys = [...new Set(boardsForMode.map(boardKey))];
+
+  el.innerHTML = '';
+  uniqueKeys.forEach(k => {
+    const parts = k.split('|');
+    const label = `${parts[2]} · ${parts[1]} · ${parts[3]}s`;
+    const btn = document.createElement('button');
+    btn.className = 'lb-filter' + (k === myKey ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      // Temporarily switch to viewing that board
+      // Parse key back to set filter state
+      renderBoardByKey(k);
+    };
+    el.appendChild(btn);
+  });
+}
+
+function renderBoardByKey(key) {
+  const parts  = key.split('|');
+  const board  = lbCache.filter(e => boardKey(e) === key).slice(0, 10);
+  const headerEl = document.getElementById('lb-board-desc');
+  if (headerEl) headerEl.textContent = `${parts[2]} · ${parts[1]} · ${parts[3]}s`;
+
+  // Update active filter
+  document.querySelectorAll('#lb-filters .lb-filter').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === `${parts[2]} · ${parts[1]} · ${parts[3]}s`);
+  });
+
+  const list = document.getElementById('lb-list');
+  list.innerHTML = '';
+  if (!board.length) {
+    list.innerHTML = '<div class="lb-empty">No scores yet for this combination.</div>';
+    return;
+  }
+  board.forEach((e, i) => {
+    const row = document.createElement('div');
+    const isHighlighted = e.id && e.id === lbHighlightId;
+    row.className = 'lb-row' + (isHighlighted ? ' lb-row-highlight' : '');
+    const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal     = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    const date      = new Date(e.created_at).toLocaleDateString();
+    row.innerHTML = `
+      <div class="lb-rank ${rankClass}">${medal}</div>
+      <div>
+        <div class="lb-name">${escHtml(e.name)}${isHighlighted ? ' <span class="lb-you">you</span>' : ''}</div>
+        <div class="lb-meta">${escHtml(e.clef||'')} · ${escHtml(e.key||'')} · ${e.duration||60}s · ${date}</div>
       </div>
       <div class="lb-score">${e.score}</div>`;
     list.appendChild(row);
   });
-
-  renderPagination(lbPage, totalPages);
-}
-
-function renderPagination(page, totalPages) {
-  const el = document.getElementById('lb-pagination');
-  if (!el) return;
-  el.innerHTML = '';
-  if (totalPages <= 1) return;
-
-  const prev = document.createElement('button');
-  prev.className = 'lb-page-btn';
-  prev.textContent = '← Prev';
-  prev.disabled = page === 0;
-  prev.onclick = () => { lbPage--; renderPage(); };
-  el.appendChild(prev);
-
-  const info = document.createElement('span');
-  info.className = 'lb-page-info';
-  info.textContent = `${page + 1} / ${totalPages}`;
-  el.appendChild(info);
-
-  const next = document.createElement('button');
-  next.className = 'lb-page-btn';
-  next.textContent = 'Next →';
-  next.disabled = page >= totalPages - 1;
-  next.onclick = () => { lbPage++; renderPage(); };
-  el.appendChild(next);
 }
 
 function escHtml(s) {
+  if (!s) return '';
   return s.replace(/[&<>"']/g, c =>
     ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
   );
