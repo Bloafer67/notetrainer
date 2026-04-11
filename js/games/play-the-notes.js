@@ -1,62 +1,53 @@
 // ── games/play-the-notes.js ───────────────────────────────────────────────
-// Handles: Play the Notes game mode — sing or play your instrument,
-//          microphone detects pitch, moving line shows real-time feedback
-// Depends on: staff.js, audio/pitch.js, main.js helpers
-//
-// STATUS: Scaffold — pregame wired up, gameplay coming next session
+// Handles: Play the Notes game mode
+// Pitch detected via microphone → moving line on staff → hold to score
+// Depends on: pitch.js, staff.js, name-the-notes.js (shared game state)
 
-// ── Constants ─────────────────────────────────────────────────────────────
-// How close (in cents) the player needs to be to register a hit
-const HIT_THRESHOLD_CENTS = 50;
-
-// How long (ms) the player must hold the correct pitch to advance
-const HIT_HOLD_MS = 300;
+const HIT_THRESHOLD_CENTS = 50;  // cents tolerance for a hit
+const HIT_HOLD_MS         = 350; // ms the player must hold the pitch
 
 // ── State ─────────────────────────────────────────────────────────────────
-let ptn_active     = false;  // is this game mode currently running?
-let ptn_hitTimer   = null;   // setTimeout handle for hold detection
-let ptn_currentHz  = null;   // latest detected frequency
+let ptn_active   = false;
+let ptn_hitTimer = null;
+let ptn_smoothHz = null; // exponentially smoothed Hz for stable line movement
 
-// ── Init (called once on page load) ──────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────
 function initPlayTheNotes() {
-  // Nothing to set up yet — mic is requested on first Play tap
+  // Nothing to do on init — mic requested on Play tap
 }
 
-// ── Start game ────────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────────────
 async function startPlayTheNotes() {
-  // Hide note buttons — pitch is the input
-  document.getElementById('choices').style.display = 'none';
+  const micEl    = document.getElementById('mic-status');
+  const micTxt   = document.getElementById('mic-status-text');
 
-  // Show mic status indicator
-  const micEl = document.getElementById('mic-status');
   if (micEl) { micEl.style.display = 'flex'; micEl.className = 'mic-status'; }
-  document.getElementById('mic-status-text').textContent = 'Requesting mic…';
+  if (micTxt) micTxt.textContent = 'Requesting mic…';
 
   const granted = await startPitchDetection(onPitchFrame);
   if (!granted) {
     if (micEl) micEl.style.display = 'none';
-    alert('Microphone access is needed to play. Please allow mic access and try again.');
+    alert('Microphone access is needed. Please allow mic access and try again.');
     showPregame();
     return;
   }
 
-  if (micEl) {
-    micEl.className = 'mic-status active';
-    document.getElementById('mic-status-text').textContent = 'Listening…';
-  }
+  if (micEl) { micEl.className = 'mic-status active'; }
+  if (micTxt) micTxt.textContent = 'Listening…';
 
-  ptn_active = true;
+  ptn_active   = true;
+  ptn_smoothHz = null;
 
-  // Reuse the shared game start infrastructure
+  // Shared game state reset (same vars as name-the-notes.js)
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
 
-  document.getElementById('score').textContent = '0';
-  document.getElementById('streak').textContent = '0';
+  document.getElementById('score').textContent    = '0';
+  document.getElementById('streak').textContent   = '0';
   setTimerDisplay(gameDuration);
 
   const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray = circ;
+  document.getElementById('timer-prog').style.strokeDasharray  = circ;
   document.getElementById('timer-prog').style.strokeDashoffset = '0';
   document.getElementById('timer-prog').className = 'timer-prog';
 
@@ -64,17 +55,18 @@ async function startPlayTheNotes() {
   document.getElementById('active-game').style.display = 'flex';
   document.getElementById('overlay-pause').classList.remove('show');
   document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('game-ui').style.display = '';
-  document.getElementById('feedback').textContent = '';
+  document.getElementById('game-ui').style.display  = '';
+  document.getElementById('choices').style.display  = 'none'; // no buttons in PTN
+  document.getElementById('feedback').textContent   = '';
 
   setTimerIcon('pause');
   loadBest();
-  nextQuestion(); // shows first note on staff
+  ptnNextQuestion();
   clearInterval(timerInterval);
   timerInterval = setInterval(tick, 1000);
 }
 
-// ── Stop game ─────────────────────────────────────────────────────────────
+// ── Stop ──────────────────────────────────────────────────────────────────
 function stopPlayTheNotes() {
   ptn_active = false;
   stopPitchDetection();
@@ -84,128 +76,143 @@ function stopPlayTheNotes() {
   if (micEl) micEl.style.display = 'none';
 }
 
-// ── Pitch frame callback ──────────────────────────────────────────────────
-// Called ~60fps by pitch.js with the detected frequency in Hz (or null)
-function onPitchFrame(hz) {
-  if (!ptn_active) return;
-  ptn_currentHz = hz;
+// ── Show next note (PTN version — no answer buttons) ──────────────────────
+function ptnNextQuestion() {
+  answered = false;
+  document.getElementById('feedback').textContent = '';
+  const notes = noteSet();
+  current = notes[Math.floor(Math.random() * notes.length)];
+  drawStaff(current);
+  // Don't call buildChoices — no buttons in PTN mode
+  // Don't call playNote — player provides the pitch
+}
 
-  if (!hz) {
-    // No pitch detected — move line off screen or hide it
-    updatePitchLine(null);
+// ── Pitch frame callback (~60fps) ─────────────────────────────────────────
+function onPitchFrame(hz) {
+  if (!ptn_active || paused) return;
+
+  // Exponential smoothing — reduces jitter without adding lag
+  // α=0.3 means 30% new value, 70% previous — adjust for feel
+  if (hz && ptn_smoothHz) {
+    ptn_smoothHz = 0.3 * hz + 0.7 * ptn_smoothHz;
+  } else {
+    ptn_smoothHz = hz; // hard set on first valid reading or silence
+  }
+
+  updatePitchLine(ptn_smoothHz ? hzToStaffY(ptn_smoothHz) : null);
+
+  if (!hz || !current) {
+    // No pitch — cancel any pending hit timer
+    if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
     return;
   }
 
-  // Convert Hz to a staff y-position and move the line
-  const y = hzToStaffY(hz);
-  updatePitchLine(y);
+  // Check if within threshold of target note
+  const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
+  if (!targetHz) return;
 
-  // Check if close enough to the target note
-  if (current) {
-    const targetHz = NOTE_FREQS[current.actualName];
-    if (targetHz) {
-      const cents = 1200 * Math.log2(hz / targetHz); // cents from target
-      if (Math.abs(cents) <= HIT_THRESHOLD_CENTS) {
-        onPitchMatch();
-      } else {
-        clearTimeout(ptn_hitTimer);
+  const cents = Math.abs(1200 * Math.log2(hz / targetHz));
+  if (cents <= HIT_THRESHOLD_CENTS) {
+    if (!ptn_hitTimer) {
+      ptn_hitTimer = setTimeout(() => {
         ptn_hitTimer = null;
-      }
+        onNoteHit();
+      }, HIT_HOLD_MS);
     }
+  } else {
+    // Drifted out of range — cancel timer
+    if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
   }
 }
 
-// ── Pitch line SVG overlay ────────────────────────────────────────────────
-// A horizontal blue line that moves up/down the staff tracking live pitch
-const PITCH_LINE_ID = 'pitch-line';
+// ── Note hit ──────────────────────────────────────────────────────────────
+function onNoteHit() {
+  if (!ptn_active || !gameActive) return;
+  score++;
+  streak++;
+  document.getElementById('score').textContent  = score;
+  document.getElementById('streak').textContent = streak;
 
+  const fb = document.getElementById('feedback');
+  fb.textContent  = '✓ ' + current.name;
+  fb.style.color  = 'var(--correct-text)';
+
+  // Check personal best
+  const prev = parseInt(localStorage.getItem(bestKey()) || '0');
+  if (score > prev) {
+    document.getElementById('best').textContent = score;
+    showToast('New high score!');
+  }
+
+  flashPitchLineGreen();
+  setTimeout(() => { if (ptn_active && gameActive && !paused) ptnNextQuestion(); }, 400);
+}
+
+// ── Pitch line SVG ────────────────────────────────────────────────────────
 function updatePitchLine(y) {
   const svg = document.getElementById('staff-svg');
   if (!svg) return;
-  let line = document.getElementById(PITCH_LINE_ID);
-  if (y === null) {
-    if (line) line.style.opacity = '0';
+  let line = document.getElementById('pitch-line');
+
+  if (y === null || y === undefined) {
+    if (line) line.setAttribute('opacity', '0');
     return;
   }
+
   if (!line) {
     const ns = 'http://www.w3.org/2000/svg';
     line = document.createElementNS(ns, 'line');
-    line.setAttribute('id', PITCH_LINE_ID);
+    line.setAttribute('id', 'pitch-line');
     line.setAttribute('x1', '40');
     line.setAttribute('x2', '300');
-    line.setAttribute('stroke', '#185FA5');
-    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-width', '2.5');
     line.setAttribute('stroke-linecap', 'round');
-    line.setAttribute('opacity', '0.85');
     svg.appendChild(line);
   }
+
   line.setAttribute('y1', y);
   line.setAttribute('y2', y);
-  line.style.opacity = '1';
-  // Smooth transition via CSS (add to styles.css: #pitch-line { transition: y 0.05s; })
+  line.setAttribute('opacity', '0.9');
+  line.setAttribute('stroke', '#185FA5');
 }
 
 function removePitchLine() {
-  const line = document.getElementById(PITCH_LINE_ID);
+  const line = document.getElementById('pitch-line');
   if (line) line.remove();
 }
 
-// ── Convert Hz to SVG y coordinate on the staff ───────────────────────────
-// Maps the playable frequency range to staff y positions
-function hzToStaffY(hz) {
-  // Get the note set for the current clef
-  const base = clef === 'bass'
-    ? BASS_BASE
-    : clef === 'guitar'
-    ? GUITAR_BASE
-    : TREBLE_BASE;
-  const notes = applyKey(base, KEY_SIGS[keyIndex].acc);
-
-  // Bottom note step=0 → topLine + 4*gap, top note step=8 → topLine - gap
-  const topLine = 25, gap = 12;
-  const lowestFreq  = NOTE_FREQS[notes[0].actualName] || NOTE_FREQS[notes[0].name];
-  const highestFreq = NOTE_FREQS[notes[notes.length-1].actualName] || NOTE_FREQS[notes[notes.length-1].name];
-
-  if (!lowestFreq || !highestFreq) return topLine + 4 * gap;
-
-  // Log scale interpolation — musical pitch is logarithmic
-  const logHz   = Math.log2(Math.max(hz, lowestFreq));
-  const logLow  = Math.log2(lowestFreq);
-  const logHigh = Math.log2(highestFreq);
-  const t = (logHz - logLow) / (logHigh - logLow); // 0 = bottom, 1 = top
-
-  const yBottom = noteYPos(0, topLine, gap);
-  const yTop    = noteYPos(8, topLine, gap);
-  return yBottom + (yTop - yBottom) * Math.min(Math.max(t, 0), 1);
-}
-
-// ── Hit detection ─────────────────────────────────────────────────────────
-// Called when pitch is within threshold — start hold timer
-function onPitchMatch() {
-  if (ptn_hitTimer) return; // already counting
-  ptn_hitTimer = setTimeout(() => {
-    ptn_hitTimer = null;
-    onNoteHit();
-  }, HIT_HOLD_MS);
-}
-
-// ── Note successfully matched ─────────────────────────────────────────────
-// Called after holding the correct pitch for HIT_HOLD_MS
-function onNoteHit() {
-  if (!ptn_active) return;
-  // Flash pitch line and note green, then advance
-  flashGreen();
+function flashPitchLineGreen() {
+  const line = document.getElementById('pitch-line');
+  if (!line) return;
+  line.setAttribute('stroke', '#3B6D11');
   setTimeout(() => {
-    if (ptn_active) nextQuestion(); // reuses name-the-notes nextQuestion
+    if (line.parentNode) line.setAttribute('stroke', '#185FA5');
   }, 400);
 }
 
-// ── Flash pitch line and note green on success ────────────────────────────
-function flashGreen() {
-  const line = document.getElementById(PITCH_LINE_ID);
-  if (line) {
-    line.setAttribute('stroke', '#3B6D11');
-    setTimeout(() => line && line.setAttribute('stroke', '#185FA5'), 400);
-  }
-  // TODO: also tint the note head green — needs a reference to the note ellipse
+// ── Convert Hz → SVG y position on staff ──────────────────────────────────
+function hzToStaffY(hz) {
+  if (!hz) return null;
+  const topLine = 25, gap = 12;
+  // Map the note range to staff y positions
+  // Bottom note (step 0) → topLine + 4*gap = 73
+  // Top note (step 8)    → topLine - gap   = 13
+  const base   = clef === 'bass' ? BASS_BASE : clef === 'guitar' ? GUITAR_BASE : TREBLE_BASE;
+  const notes  = applyKey(base, KEY_SIGS[keyIndex].acc);
+  const loNote = notes[0];
+  const hiNote = notes[notes.length - 1];
+
+  const loHz = NOTE_FREQS[loNote.actualName] || NOTE_FREQS[loNote.name];
+  const hiHz = NOTE_FREQS[hiNote.actualName] || NOTE_FREQS[hiNote.name];
+  if (!loHz || !hiHz) return topLine + 2 * gap;
+
+  // Log-scale interpolation (pitch is logarithmic)
+  const logHz  = Math.log2(Math.max(hz, loHz));
+  const logLo  = Math.log2(loHz);
+  const logHi  = Math.log2(hiHz);
+  const t      = Math.min(Math.max((logHz - logLo) / (logHi - logLo), 0), 1);
+
+  const yBottom = noteYPos(0, topLine, gap);  // step 0
+  const yTop    = noteYPos(8, topLine, gap);  // step 8
+  return yBottom + (yTop - yBottom) * t;
 }
