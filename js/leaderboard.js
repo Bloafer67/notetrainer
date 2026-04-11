@@ -1,132 +1,228 @@
-// ── leaderboard.js ────────────────────────────────────────────────────────
-// Handles: Supabase connection, saving scores, fetching + rendering leaderboard
-// Depends on: clef, keyIndex, KEY_SIGS, lastScore, gameDuration (game state)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Name the Notes</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
 
-const SB_URL = 'https://mgkgyzkfdnptfpnrhczu.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1na2d5emtmZG5wdGZwbnJoY3p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyODEsImV4cCI6MjA5MTQyNTI4MX0.qp95iZvyI33i6jiwxXXFf0cClyg0pSNT2-3YFEII18g';
+<div class="top-bar">
+  <div class="game-mode-switcher">
+    <span class="game-mode-emoji" id="game-mode-emoji">🎼</span>
+    <select class="game-mode-select" id="game-mode-select" onchange="onGameModeChange()">
+      <option value="name-the-notes">Name the Notes</option>
+      <option value="play-the-notes">Play the Notes</option>
+    </select>
+  </div>
+  <div class="top-btns">
+    <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">
+      <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    </button>
+    <button class="icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme">
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    </button>
+  </div>
+</div>
 
-// ── Low-level fetch wrapper ───────────────────────────────────────────────
-async function sbFetch(path, options = {}) {
-  const res = await fetch(SB_URL + path, {
-    ...options,
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': options.prefer || '',
-      ...options.headers,
-    },
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('game')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:5px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Game
+    </button>
+    <button class="tab-btn" onclick="switchTab('leaderboard')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:5px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Leaderboard
+    </button>
+  </div>
 
-// ── Filter state ──────────────────────────────────────────────────────────
-let lbFilter = 'all';
-let lbCache  = [];
+  <!-- GAME TAB -->
+  <div class="tab-panel active" id="tab-game">
+    <div id="game-ui">
 
-// ── Save score ────────────────────────────────────────────────────────────
-async function saveToLeaderboard() {
-  const nameEl = document.getElementById('player-name');
-  const name   = nameEl.value.trim() || 'Anonymous';
-  localStorage.setItem('mntr-playername', name);
+      <!-- Pre-game screen -->
+      <div id="pregame-screen" class="show">
 
-  const clefLabel = clef === 'guitar'
-    ? 'Guitar (8vb)'
-    : clef.charAt(0).toUpperCase() + clef.slice(1);
+        <!-- Name the Notes content -->
+        <div id="pregame-ntn">
+          <div class="pregame-heading">Name the Notes</div>
+          <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">As notes appear on the staff, tap the correct name.</div>
+        </div>
 
-  const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Saving…';
-  saveBtn.disabled = true;
-
-  try {
-    await sbFetch('/rest/v1/leaderboard', {
-      method: 'POST',
-      prefer: 'return=minimal',
-      body: JSON.stringify({
-        name,
-        score:  lastScore,
-        clef:   clefLabel,
-        key:    KEY_SIGS[keyIndex].label,
-      }),
-    });
-    showToast('Saved!');
-    saveBtn.textContent = 'Saved ✓';
-    saveBtn.disabled = true;
-  } catch (e) {
-    console.error('Save error:', e.message);
-    saveBtn.textContent = 'Save';
-    saveBtn.disabled = false;
-    saveBtn.onclick = saveToLeaderboard;
-    showToast('Could not save — try again');
-    return;
-  }
-
-  fetchLeaderboard();
-}
-
-// ── Fetch all scores ──────────────────────────────────────────────────────
-async function fetchLeaderboard() {
-  try {
-    const data = await sbFetch(
-      '/rest/v1/leaderboard?select=*&order=score.desc&limit=100',
-      { method:'GET', prefer:'return=representation' }
-    );
-    lbCache = data || [];
-    renderLeaderboard();
-  } catch (e) {
-    document.getElementById('lb-list').innerHTML =
-      '<div class="lb-empty">Could not load scores.</div>';
-  }
-}
-
-// ── Render leaderboard UI ─────────────────────────────────────────────────
-function renderLeaderboard() {
-  // Build filter pills from unique keys in the data
-  const keys = ['all', ...new Set(lbCache.map(e => e.key))];
-  const fEl  = document.getElementById('lb-filters');
-  fEl.innerHTML = '';
-  keys.forEach(k => {
-    const btn = document.createElement('button');
-    btn.className = 'lb-filter' + (lbFilter === k ? ' active' : '');
-    btn.textContent = k === 'all' ? 'All keys' : k;
-    btn.onclick = () => { lbFilter = k; renderLeaderboard(); };
-    fEl.appendChild(btn);
-  });
-
-  const filtered = lbFilter === 'all'
-    ? lbCache
-    : lbCache.filter(e => e.key === lbFilter);
-
-  const list = document.getElementById('lb-list');
-  list.innerHTML = '';
-
-  if (!filtered.length) {
-    list.innerHTML = '<div class="lb-empty">No scores yet — play a round and save your name!</div>';
-    return;
-  }
-
-  filtered.forEach((e, i) => {
-    const row = document.createElement('div');
-    row.className = 'lb-row';
-    const rankClass = i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
-    const medal     = i===0 ? '🥇'   : i===1 ? '🥈'     : i===2 ? '🥉'     : i+1;
-    const date      = new Date(e.created_at).toLocaleDateString();
-    row.innerHTML = `
-      <div class="lb-rank ${rankClass}">${medal}</div>
-      <div>
-        <div class="lb-name">${escHtml(e.name)}</div>
-        <div class="lb-meta">${escHtml(e.clef)} · ${escHtml(e.key)} · ${date}</div>
+        <!-- Play the Notes content -->
+        <div id="pregame-ptn" style="display:none;">
+          <div class="pregame-heading">Play the Notes</div>
+          <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">A note appears on the staff — sing or play it on your instrument. Hold the pitch to advance.</div>
+        </div>
+        <div class="pregame-selectors">
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="key-select" onchange="onKeyChange()"></select>
+            <div class="info-nub">i
+              <div class="info-tooltip">The key signature appears on the staff. Note buttons show natural names — apply the key yourself.</div>
+            </div>
+          </div>
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="clef-select" onchange="onClefChange()">
+              <option value="treble">Treble</option>
+              <option value="bass">Bass</option>
+              <option value="guitar">Guitar (8vb)</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">Treble covers E4–F5. Bass covers G2–A3. Guitar (8vb) reads like treble but sounds an octave lower.</div>
+            </div>
+          </div>
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="duration-select" onchange="onDurationChange()">
+              <option value="30">30 seconds</option>
+              <option value="60" selected>60 seconds</option>
+              <option value="90">90 seconds</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">How long your round lasts. 30s is a quick challenge, 60s is the classic, 90s for a longer session.</div>
+            </div>
+          </div>
+        </div>
+        <button class="pregame-play-btn" onclick="startGame()">Play</button>
+        <details>
+          <summary>Memory tricks</summary>
+          <div class="cheat-sheet">
+            <div class="mnemonic">
+              <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
+              <strong>Treble / Guitar spaces:</strong> FACE<br>
+              <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
+              <strong>Bass spaces:</strong> All Cows Eat Grass
+            </div>
+          </div>
+        </details>
       </div>
-      <div class="lb-score">${e.score}</div>`;
-    list.appendChild(row);
-  });
-}
 
-// ── HTML escape helper ────────────────────────────────────────────────────
-function escHtml(s) {
-  return s.replace(/[&<>"']/g, c =>
-    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
-  );
-}
+      <!-- Active game layout -->
+      <div id="active-game" style="display:none; flex-direction:column; gap:12px;">
+        <div class="score-row" id="score-row">
+          <div class="score-hero-wrap">
+            <div class="score-hero" id="score">0</div>
+            <div class="score-hero-label">score</div>
+          </div>
+          <div class="score-divider"></div>
+          <div class="score-pair">
+            <div class="score-secondary">
+              <span class="score-secondary-num" id="streak">0</span>
+              <span class="score-secondary-label">streak</span>
+            </div>
+            <div class="score-secondary">
+              <span class="score-secondary-num" id="best">—</span>
+              <span class="score-secondary-label">best</span>
+            </div>
+          </div>
+          <div class="score-timer">
+            <div class="timer-wrap">
+              <div class="timer-circle" id="timer-circle" onclick="timerTap()">
+                <svg class="timer-ring" width="64" height="64" viewBox="0 0 64 64">
+                  <circle class="timer-track" cx="32" cy="32" r="27"/>
+                  <circle class="timer-prog" id="timer-prog" cx="32" cy="32" r="27"/>
+                </svg>
+                <div class="timer-inner">
+                  <div class="timer-icon" id="timer-icon"></div>
+                </div>
+              </div>
+              <div class="timer-time-label" id="timer-label">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="staff-card" id="staff-card">
+          <div class="hs-toast" id="hs-toast"></div>
+          <div class="answer-toast" id="answer-toast"></div>
+          <div class="pause-overlay" id="overlay-pause" onclick="timerTap()">
+            <div class="pause-label">Paused — tap timer to resume</div>
+          </div>
+          <div class="mic-status" id="mic-status" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span id="mic-status-text">Listening…</span>
+          </div>
+          <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <div class="choices" id="choices" style="display:none"></div>
+        <div class="feedback" id="feedback"></div>
+
+        <details>
+          <summary>Memory tricks</summary>
+          <div class="cheat-sheet">
+            <div class="mnemonic">
+              <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
+              <strong>Treble / Guitar spaces:</strong> FACE<br>
+              <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
+              <strong>Bass spaces:</strong> All Cows Eat Grass
+            </div>
+          </div>
+        </details>
+      </div>
+
+    </div><!-- /game-ui -->
+
+    <!-- Recap screen -->
+    <div id="recap-view">
+      <canvas id="recap-confetti"></canvas>
+      <div class="recap-big-score" id="recap-score">0</div>
+      <div class="recap-sub-line" id="recap-sub-line">Notes in 60 seconds</div>
+      <div class="recap-streak-line" id="recap-streak-line"></div>
+      <div class="recap-new-best-badge" id="recap-new-best" style="display:none">⭐ New high score!</div>
+      <div class="recap-form">
+        <input class="recap-name-input" id="player-name" type="text" placeholder="Add name to leaderboard" maxlength="20"/>
+        <button class="recap-save-btn" id="save-btn" onclick="saveToLeaderboard()">Save</button>
+      </div>
+      <button class="recap-play-btn" onclick="showPregame()">Play again</button>
+      <div class="recap-text-links">
+        <button class="recap-text-link" onclick="shareScore()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share my score!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD TAB -->
+  <div class="tab-panel" id="tab-leaderboard">
+    <div class="lb-header">
+      <h2>Leaderboard</h2>
+      <button class="lb-clear" onclick="fetchLeaderboard()">Refresh</button>
+    </div>
+    <div class="lb-game-tabs" id="lb-game-tabs"></div>
+    <div class="lb-filters" id="lb-filters"></div>
+    <div class="lb-list" id="lb-list"></div>
+    <div class="lb-pagination" id="lb-pagination"></div>
+  </div>
+</div>
+
+<!--
+  SCRIPT LOADING ORDER — this matters!
+  Each file depends on the ones above it being loaded first.
+
+  1. Tone.js     — external audio library (CDN)
+  2. staff.js    — KEY_SIGS, note bases, drawStaff()
+  3. synth.js    — playNote() — needs NOTE_FREQS
+  4. pitch.js    — startPitchDetection() — standalone
+  5. leaderboard.js — saveToLeaderboard(), fetchLeaderboard()
+  6. name-the-notes.js — game logic — needs everything above
+  7. play-the-notes.js — game logic — needs pitch.js + staff.js
+  8. main.js     — theme, tabs, init — needs everything above
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<script src="js/staff.js"></script>
+<script src="js/audio/synth.js"></script>
+<script src="js/audio/pitch.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/games/name-the-notes.js"></script>
+<script src="js/games/play-the-notes.js"></script>
+<script src="js/main.js"></script>
+
+<script>
+  // Kick everything off once all scripts are loaded
+  initNameTheNotes();
+  initPlayTheNotes();
+  initApp();
+</script>
+
+</body>
+</html>
