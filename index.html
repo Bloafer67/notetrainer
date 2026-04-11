@@ -9,9 +9,12 @@
 <body>
 
 <div class="top-bar">
-  <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="goHome()" title="Back to start">
-    <span style="font-size:28px;line-height:1;">🎼</span>
-    <h1>Name the Notes</h1>
+  <div class="game-mode-switcher">
+    <span class="game-mode-emoji" id="game-mode-emoji">🎼</span>
+    <select class="game-mode-select" id="game-mode-select" onchange="onGameModeChange()">
+      <option value="name-the-notes">Name the Notes</option>
+      <option value="play-the-notes">Play the Notes</option>
+    </select>
   </div>
   <div class="top-btns">
     <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">
@@ -39,9 +42,17 @@
 
       <!-- Pre-game screen -->
       <div id="pregame-screen" class="show">
-        <div>
+
+        <!-- Name the Notes content -->
+        <div id="pregame-ntn">
           <div class="pregame-heading">Name the Notes</div>
           <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">As notes appear on the staff, tap the correct name.</div>
+        </div>
+
+        <!-- Play the Notes content -->
+        <div id="pregame-ptn" style="display:none;">
+          <div class="pregame-heading">Play the Notes</div>
+          <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">A note appears on the staff — sing or play it on your instrument. Hold the pitch to advance.</div>
         </div>
         <div class="pregame-selectors">
           <div class="pregame-selectors-row">
@@ -124,6 +135,10 @@
           <div class="answer-toast" id="answer-toast"></div>
           <div class="pause-overlay" id="overlay-pause" onclick="timerTap()">
             <div class="pause-label">Paused — tap timer to resume</div>
+          </div>
+          <div class="mic-status" id="mic-status" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span id="mic-status-text">Listening…</span>
           </div>
           <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
