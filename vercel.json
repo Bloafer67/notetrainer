@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/name-the-notes", "destination": "/index.html" },
+    { "source": "/play-the-notes", "destination": "/index.html" }
+  ]
+}
