@@ -327,3 +327,20 @@ details[open] summary::after { content: '▾'; }
 .cheat-sheet { background: var(--bg); border-top: 0.5px solid var(--border); padding: 12px 14px; }
 .mnemonic { background: var(--primary-light); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--primary-text); line-height: 1.6; }
 .mnemonic strong { font-weight: 500; }
+
+/* ── Leaderboard game mode tabs ───────────────────────────────────────── */
+.lb-game-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+
+/* ── Pagination ───────────────────────────────────────────────────────── */
+.lb-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; margin-top: 8px;
+}
+.lb-page-btn {
+  font-size: 13px; padding: 5px 12px; border-radius: 999px;
+  border: 0.5px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; font-family: inherit;
+}
+.lb-page-btn:hover:not(:disabled) { background: var(--surface2); }
+.lb-page-btn:disabled { opacity: 0.35; cursor: default; }
+.lb-page-info { font-size: 12px; color: var(--text3); }
