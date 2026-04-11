@@ -67,15 +67,26 @@ function onGameModeChange() {
   const select = document.getElementById('game-mode-select');
   gameMode = select.value;
   const cfg = GAME_MODE_CONFIG[gameMode];
+
   // Swap emoji
   document.getElementById('game-mode-emoji').textContent = cfg.emoji;
+
+  // Default to Guitar (8vb) for Play the Notes
+  if (gameMode === 'play-the-notes') {
+    document.getElementById('clef-select').value = 'guitar';
+    clef = 'guitar';
+  }
+
   // Swap pregame description
   Object.values(GAME_MODE_CONFIG).forEach(c => {
     document.getElementById(c.pregameId).style.display = 'none';
   });
   document.getElementById(cfg.pregameId).style.display = '';
-  // Hide note buttons for Play the Notes (pitch-based answering)
-  document.getElementById('choices').style.display = 'none';
+
+  // Update URL without page reload
+  const slug = gameMode === 'play-the-notes' ? '/play-the-notes' : '/name-the-notes';
+  history.pushState({ gameMode }, '', slug);
+
   showPregame();
 }
 
@@ -149,12 +160,35 @@ function showPregame() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-// Called once all scripts have loaded (see index.html bottom of body)
 function initApp() {
   applyTheme();
   setMuteIcon();
   setThemeIcon();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
+
+  // URL-based routing — /play-the-notes loads that game mode
+  const path = window.location.pathname;
+  if (path === '/play-the-notes') {
+    gameMode = 'play-the-notes';
+    document.getElementById('game-mode-select').value = 'play-the-notes';
+    document.getElementById('game-mode-emoji').textContent = '🎸';
+    document.getElementById('clef-select').value = 'guitar';
+    clef = 'guitar';
+  }
+
+  // Handle browser back/forward
+  window.addEventListener('popstate', e => {
+    const mode = e.state?.gameMode || 'name-the-notes';
+    gameMode = mode;
+    document.getElementById('game-mode-select').value = mode;
+    document.getElementById('game-mode-emoji').textContent = GAME_MODE_CONFIG[mode].emoji;
+    if (mode === 'play-the-notes') {
+      document.getElementById('clef-select').value = 'guitar';
+      clef = 'guitar';
+    }
+    showPregame();
+  });
+
   loadBest();
   setTimerIcon('play');
   setTimerDisplay(null);
