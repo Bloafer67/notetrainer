@@ -54,6 +54,31 @@ function switchTab(name) {
   if (name === 'leaderboard') fetchLeaderboard();
 }
 
+// ── Game mode ─────────────────────────────────────────────────────────────
+// 'name-the-notes' | 'play-the-notes'
+let gameMode = 'name-the-notes';
+
+const GAME_MODE_CONFIG = {
+  'name-the-notes': { emoji: '🎼', pregameId: 'pregame-ntn' },
+  'play-the-notes': { emoji: '🎸', pregameId: 'pregame-ptn' },
+};
+
+function onGameModeChange() {
+  const select = document.getElementById('game-mode-select');
+  gameMode = select.value;
+  const cfg = GAME_MODE_CONFIG[gameMode];
+  // Swap emoji
+  document.getElementById('game-mode-emoji').textContent = cfg.emoji;
+  // Swap pregame description
+  Object.values(GAME_MODE_CONFIG).forEach(c => {
+    document.getElementById(c.pregameId).style.display = 'none';
+  });
+  document.getElementById(cfg.pregameId).style.display = '';
+  // Hide note buttons for Play the Notes (pitch-based answering)
+  document.getElementById('choices').style.display = 'none';
+  showPregame();
+}
+
 // ── Navigation ────────────────────────────────────────────────────────────
 function goHome() {
   if (window.gameActive) {
@@ -105,12 +130,21 @@ function toMMSS(secs) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
+// Expose gameMode on window so game files can read it
+Object.defineProperty(window, 'gameMode', { get: () => gameMode });
+
 // ── Pregame show/hide ─────────────────────────────────────────────────────
 function showPregame() {
   document.getElementById('recap-view').classList.remove('show');
   document.getElementById('active-game').style.display = 'none';
   document.getElementById('game-ui').style.display = '';
   document.getElementById('pregame-screen').classList.add('show');
+  // Show correct pregame description
+  const cfg = GAME_MODE_CONFIG[gameMode];
+  Object.values(GAME_MODE_CONFIG).forEach(c => {
+    document.getElementById(c.pregameId).style.display = 'none';
+  });
+  document.getElementById(cfg.pregameId).style.display = '';
   loadBest();
 }
 
