@@ -4,351 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Name the Notes</title>
-  <style>
-    /* ── Design tokens ─────────────────────────────────────────────────── */
-    :root {
-      /* Surfaces */
-      --bg:        #f5f4f0;
-      --surface:   #ffffff;
-      --surface2:  #f1efe8;
-      --border:    #d3d1c7;
-      --border2:   #b4b2a9;
-      /* Text */
-      --text:      #1a1a18;
-      --text2:     #5f5e5a;
-      --text3:     #888780;
-      /* Primary — teal */
-      --primary:        #1D9E75;
-      --primary-light:  #E1F5EE;
-      --primary-dark:   #0F6E56;
-      --primary-text:   #085041;
-      /* Semantic */
-      --correct-bg:     #EAF3DE;
-      --correct-text:   #3B6D11;
-      --correct-border: #639922;
-      --wrong-bg:       #FCEBEB;
-      --wrong-text:     #A32D2D;
-      --wrong-border:   #E24B4A;
-      --amber-bg:       #FAEEDA;
-      --amber-border:   #EF9F27;
-      --amber-text:     #633806;
-    }
-    [data-theme="dark"] {
-      --bg:        #1a1a18;
-      --surface:   #2c2c2a;
-      --surface2:  #383835;
-      --border:    #444441;
-      --border2:   #5f5e5a;
-      --text:      #f1efe8;
-      --text2:     #b4b2a9;
-      --text3:     #888780;
-      --primary:        #5DCAA5;
-      --primary-light:  #085041;
-      --primary-dark:   #9FE1CB;
-      --primary-text:   #9FE1CB;
-      --correct-bg:     #173404;
-      --correct-text:   #C0DD97;
-      --correct-border: #3B6D11;
-      --correct-btn:    #27500A;
-      --wrong-bg:       #501313;
-      --wrong-text:     #F7C1C1;
-      --wrong-border:   #A32D2D;
-      --amber-bg:       #412402;
-      --amber-border:   #854F0B;
-      --amber-text:     #FAC775;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg); color: var(--text);
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; padding: 1.75rem 1rem 3rem;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    /* ── Top bar ─────────────────────────────────────────────────────────── */
-    .top-bar {
-      width: 100%; max-width: 480px;
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 1rem;
-    }
-    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
-    .top-btns { display: flex; gap: 4px; }
-    .icon-btn {
-      background: var(--bg); border: 0.5px solid var(--border);
-      border-radius: 999px; width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: background 0.15s; color: var(--text3);
-    }
-    .icon-btn:hover { background: var(--surface2); color: var(--text2); }
-    .icon-btn svg { display: block; color: inherit; }
-
-    /* ── Tabs ──────────────────────────────────────────────────────────── */
-    .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
-    .tabs { display: flex; border-bottom: 0.5px solid var(--border); }
-    .tab-btn {
-      flex: 1; padding: 10px; font-size: 14px; font-weight: 500;
-      background: transparent; border: none; cursor: pointer;
-      color: var(--text3); font-family: inherit;
-      border-bottom: 2px solid transparent; margin-bottom: -0.5px;
-      transition: color 0.15s;
-    }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .tab-panel { display: none; flex-direction: column; gap: 12px; }
-    .tab-panel.active { display: flex; }
-
-    /* ── Score row ─────────────────────────────────────────────────────── */
-    .score-row {
-      display: flex; align-items: center; gap: 0; padding: 0 4px;
-    }
-    .score-hero-wrap { display: flex; flex-direction: column; gap: 2px; padding-right: 16px; }
-    .score-hero { font-size: 48px; font-weight: 700; color: var(--text); line-height: 1; }
-    .score-hero-label { font-size: 10px; color: var(--text3); letter-spacing: 0.05em; }
-    .score-divider { width: 0.5px; background: var(--border); align-self: stretch; margin: 4px 16px; }
-    .score-pair { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .score-secondary { display: flex; align-items: baseline; gap: 4px; }
-    .score-secondary-num { font-size: 18px; font-weight: 600; color: var(--text2); line-height: 1; }
-    .score-secondary-label { font-size: 10px; color: var(--text3); letter-spacing: 0.03em; }
-    .score-timer { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: auto; }
-    .timer-time-label { font-size: 11px; color: var(--text3); letter-spacing: 0.02em; }
-
-    /* ── Circular timer ────────────────────────────────────────────────── */
-    .timer-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .timer-circle {
-      position: relative; width: 64px; height: 64px; cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .timer-circle svg.timer-ring { position: absolute; inset: 0; transform: rotate(-90deg) scaleY(-1); }
-    .timer-track { fill: none; stroke: var(--border); stroke-width: 4; }
-    .timer-prog {
-      fill: none; stroke: #185FA5; stroke-width: 4; stroke-linecap: round;
-      stroke-dasharray: 170; stroke-dashoffset: 0;
-      transition: stroke-dashoffset 1s linear, stroke 0.3s;
-    }
-    [data-theme="dark"] .timer-prog { stroke: #378ADD; }
-    .timer-prog.warning { stroke: var(--wrong-border); }
-    .timer-inner {
-      position: absolute; inset: 0; display: flex;
-      align-items: center; justify-content: center;
-      pointer-events: none;
-    }
-    .timer-icon { color: var(--text2); display: flex; align-items: center; }
-    .timer-time-label { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.02em; }
-    .timer-time-label.warning { color: var(--wrong-text); }
-
-    /* ── Staff card ────────────────────────────────────────────────────── */
-    .staff-card {
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 12px; padding: 0.875rem 1.25rem; position: relative; overflow: hidden;
-    }
-    .staff-label { font-size: 11px; color: var(--text3); text-transform: uppercase;
-      letter-spacing: 0.04em; margin-bottom: 6px; }
-    svg#staff-svg { width: 100%; display: block; }
-
-    /* ── Pre-game screen ───────────────────────────────────────────────── */
-    #pregame-screen {
-      display: none;
-      flex-direction: column; align-items: stretch;
-      gap: 28px; padding: 2.5rem 0;
-    }
-    #pregame-screen.show { display: flex; }
-    .pregame-heading { font-size: 52px; font-weight: 700; color: var(--text); letter-spacing: -1px; line-height: 1; text-align: center; }
-    .pregame-selectors { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
-    .pregame-selectors-row { display: flex; gap: 8px; align-items: center; }
-    .pregame-select {
-      flex: 1; font-family: inherit; font-size: 13px; color: var(--text);
-      background: var(--surface); border: 0.5px solid var(--border2); border-radius: 999px;
-      padding: 10px 28px 10px 16px; cursor: pointer; appearance: none; font-weight: 500;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center;
-    }
-    .info-nub {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 18px; height: 18px; border-radius: 999px;
-      border: 0.5px solid var(--border2); font-size: 11px; color: var(--text3);
-      cursor: pointer; position: relative; flex-shrink: 0;
-    }
-    .info-nub:hover .info-tooltip { display: block; }
-    .info-tooltip {
-      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
-      transform: translateX(-50%); width: 220px;
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 8px; padding: 8px 10px; font-size: 11px;
-      color: var(--text2); line-height: 1.5; z-index: 50;
-      pointer-events: none; text-align: left;
-    }
-    .pregame-play-btn {
-      width: 100%; padding: 16px; border-radius: 12px;
-      background: var(--primary); color: #fff; border: none;
-      font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .pregame-play-btn:hover { opacity: 0.88; }
-
-    /* Pause overlay */
-    .pause-overlay {
-      display: none; position: absolute; inset: 0; z-index: 25;
-      align-items: center; justify-content: center;
-      background: rgba(245,244,240,0.92); border-radius: 12px; cursor: pointer;
-    }
-    [data-theme="dark"] .pause-overlay { background: rgba(44,44,42,0.92); }
-    .pause-overlay.show { display: flex; }
-    .pause-label { font-size: 15px; font-weight: 500; color: var(--text2); }
-
-    /* ── Note buttons ──────────────────────────────────────────────────── */
-    .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .choice-btn {
-      background: var(--primary); border: none; border-radius: 10px;
-      padding: 14px 4px; font-size: 15px; font-weight: 600;
-      cursor: pointer; font-family: inherit; color: #fff;
-      transition: filter 0.1s, transform 0.08s;
-    }
-    .choice-btn:hover:not(:disabled) { filter: brightness(1.08); }
-    .choice-btn:active:not(:disabled) { transform: scale(0.96); }
-    .choice-btn.correct { background: var(--correct-text); }
-    .choice-btn.wrong   { background: var(--wrong-border); }
-    .choice-btn:disabled { cursor: default; filter: none; }
-
-    .feedback { min-height: 20px; font-size: 13px; font-weight: 500; color: var(--text3); text-align: center; }
-
-    /* ── Recap full-page view ──────────────────────────────────────────── */
-    #recap-view {
-      display: none; flex-direction: column; align-items: center;
-      gap: 0; padding: 2rem 0 1rem; text-align: center; position: relative;
-    }
-    #recap-view.show { display: flex; }
-    #recap-confetti {
-      position: fixed; inset: 0; pointer-events: none; z-index: 5;
-    }
-    .recap-big-score { font-size: 96px; font-weight: 700; color: var(--text); line-height: 1; }
-    .recap-sub-line { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 4px; }
-    [data-theme="dark"] .recap-big-score { color: var(--text); }
-    [data-theme="dark"] .recap-sub-line { color: var(--text); }
-    .recap-streak-line { font-size: 13px; color: var(--text3); margin-top: 6px; font-weight: 400; }
-    .recap-new-best-badge {
-      font-size: 13px; color: var(--amber-text); font-weight: 500; margin-top: 6px;
-    }
-    .recap-form { display: flex; gap: 8px; width: 100%; margin-top: 28px; }
-    .recap-name-input {
-      flex: 1; padding: 10px 14px; border-radius: 10px; font-size: 14px;
-      border: 0.5px solid var(--border2); background: var(--surface2);
-      color: var(--text); font-family: inherit; outline: none;
-    }
-    .recap-name-input::placeholder { color: var(--text3); }
-    .recap-name-input:focus { border-color: var(--primary); }
-    .recap-save-btn {
-      padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 500;
-      font-family: inherit; cursor: pointer; white-space: nowrap;
-      background: var(--surface2); color: var(--text2);
-      border: 0.5px solid var(--border2);
-    }
-    .recap-save-btn:hover { background: var(--border); }
-    .recap-play-btn {
-      width: 100%; padding: 15px; border-radius: 12px; margin-top: 12px;
-      background: #185FA5; color: #fff; border: none;
-      font-size: 17px; font-weight: 700; font-family: inherit; cursor: pointer;
-    }
-    [data-theme="dark"] .recap-play-btn { background: #378ADD; }
-    .recap-play-btn:hover { opacity: 0.88; }
-    .recap-text-links { display: flex; gap: 20px; margin-top: 20px; align-items: center; justify-content: center; }
-    .recap-text-link {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 14px; color: var(--text3); cursor: pointer;
-      background: none; border: none; font-family: inherit; padding: 0;
-    }
-    .recap-text-link:hover { color: var(--text2); }
-    .recap-text-link svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-    /* ── Note buttons — blue, distinct from teal UI chrome ────────────── */
-    .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .choice-btn {
-      background: #185FA5; border: none; border-radius: 10px;
-      padding: 14px 4px; font-size: 15px; font-weight: 600;
-      cursor: pointer; font-family: inherit; color: #fff;
-      transition: filter 0.1s, transform 0.08s;
-    }
-    [data-theme="dark"] .choice-btn { background: #378ADD; }
-    .choice-btn:hover:not(:disabled) { filter: brightness(1.08); }
-    .choice-btn:active:not(:disabled) { transform: scale(0.96); }
-    .choice-btn.correct { background: #3B6D11; }
-    [data-theme="dark"] .choice-btn.correct { background: #27500A; }
-    .choice-btn.wrong   { background: var(--wrong-border); }
-    .choice-btn:disabled { cursor: default; filter: none; }
-    .feedback { min-height: 20px; font-size: 13px; font-weight: 500; color: var(--text3); text-align: center; }
-
-    /* ── Answer toast ──────────────────────────────────────────────────── */
-    .answer-toast {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%) scale(0.8);
-      background: var(--correct-bg); border: 0.5px solid var(--correct-border);
-      color: var(--correct-text); border-radius: 10px;
-      padding: 8px 20px; font-size: 18px; font-weight: 500;
-      opacity: 0; pointer-events: none; z-index: 20;
-      transition: opacity 0.12s, transform 0.12s;
-    }
-    .answer-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    .answer-toast.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); color: var(--wrong-text); }
-
-    /* ── HS toast ──────────────────────────────────────────────────────── */
-    .hs-toast {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      background: var(--amber-bg); border: 0.5px solid var(--amber-border);
-      border-radius: 8px; padding: 5px 14px; font-size: 12px;
-      color: var(--amber-text); white-space: nowrap;
-      opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 40;
-    }
-    .hs-toast.show { opacity: 1; }
-
-    /* ── Leaderboard ───────────────────────────────────────────────────── */
-    .lb-header { display: flex; justify-content: space-between; align-items: center; }
-    .lb-header h2 { font-size: 16px; font-weight: 500; }
-    .lb-clear { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; font-family: inherit; }
-    .lb-clear:hover { color: var(--wrong-text); }
-    .lb-filters { display: flex; gap: 6px; flex-wrap: wrap; }
-    .lb-filter {
-      font-size: 12px; padding: 3px 10px; border-radius: 999px;
-      border: 0.5px solid var(--border2); background: transparent;
-      color: var(--text2); cursor: pointer; font-family: inherit;
-    }
-    .lb-filter.active { background: var(--primary-light); color: var(--primary-text); border-color: var(--primary); }
-    .lb-list { display: flex; flex-direction: column; gap: 6px; }
-    .lb-empty { font-size: 13px; color: var(--text3); text-align: center; padding: 2rem 0; }
-    .lb-row {
-      display: grid; grid-template-columns: 28px 1fr auto;
-      align-items: center; gap: 10px;
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 10px; padding: 10px 14px;
-    }
-    .lb-rank { font-size: 13px; font-weight: 500; color: var(--text3); text-align: center; }
-    .lb-rank.gold { color: #BA7517; }
-    .lb-rank.silver { color: #888780; }
-    .lb-rank.bronze { color: #854F0B; }
-    .lb-name { font-size: 14px; font-weight: 500; color: var(--text); }
-    .lb-meta { font-size: 11px; color: var(--text3); }
-    .lb-score { font-size: 18px; font-weight: 500; color: var(--primary); text-align: right; }
-
-    /* ── Cheat sheet — matches bg, recedes ────────────────────────────── */
-    details { width: 100%; border-radius: 8px; overflow: hidden; border: 0.5px solid var(--border); background: var(--bg); }
-    summary {
-      padding: 12px 16px; font-size: 12px; color: var(--text3); cursor: pointer;
-      list-style: none; display: flex; justify-content: space-between;
-      align-items: center; user-select: none;
-    }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: '▸'; font-size: 10px; color: var(--text3); }
-    details[open] summary::after { content: '▾'; }
-    .cheat-sheet { background: var(--bg); border-top: 0.5px solid var(--border); padding: 12px 14px; }
-    .cheat-section { margin-bottom: 14px; }
-    .cheat-section h3 { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .note-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .note-pill { background: var(--surface2); border-radius: 6px; padding: 5px 8px; font-size: 12px; color: var(--text2); display: flex; justify-content: space-between; }
-    .note-pill span { color: var(--text3); font-size: 11px; }
-    .mnemonic { background: var(--primary-light); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--primary-text); line-height: 1.6; }
-    .mnemonic strong { font-weight: 500; }
-
-  </style>
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
@@ -359,10 +15,10 @@
   </div>
   <div class="top-btns">
     <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">
-      <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
     </button>
     <button class="icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme">
-      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
     </button>
   </div>
 </div>
@@ -379,121 +35,118 @@
 
   <!-- GAME TAB -->
   <div class="tab-panel active" id="tab-game">
-
-    <!-- Game UI (hidden during recap) -->
     <div id="game-ui">
 
-    <!-- Pre-game screen — full layout, shown before game starts -->
-    <div id="pregame-screen" class="show">
-      <div>
-        <div class="pregame-heading">Name the Notes</div>
-        <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">As notes appear on the staff, tap the correct name.</div>
-      </div>
-      <div class="pregame-selectors">
-        <div class="pregame-selectors-row">
-          <select class="pregame-select" id="key-select" onchange="onKeyChange()"></select>
-          <div class="info-nub">i
-            <div class="info-tooltip">The key signature appears on the staff. Note buttons show natural names — apply the key yourself.</div>
-          </div>
+      <!-- Pre-game screen -->
+      <div id="pregame-screen" class="show">
+        <div>
+          <div class="pregame-heading">Name the Notes</div>
+          <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">As notes appear on the staff, tap the correct name.</div>
         </div>
-        <div class="pregame-selectors-row">
-          <select class="pregame-select" id="clef-select" onchange="onClefChange()">
-            <option value="treble">Treble</option>
-            <option value="bass">Bass</option>
-            <option value="guitar">Guitar (8vb)</option>
-          </select>
-          <div class="info-nub">i
-            <div class="info-tooltip">Treble covers E4–F5. Bass covers G2–A3. Guitar (8vb) reads like treble but sounds an octave lower — standard guitar notation.</div>
-          </div>
-        </div>
-        <div class="pregame-selectors-row">
-          <select class="pregame-select" id="duration-select" onchange="onDurationChange()">
-            <option value="30">30 seconds</option>
-            <option value="60" selected>60 seconds</option>
-            <option value="90">90 seconds</option>
-          </select>
-          <div class="info-nub">i
-            <div class="info-tooltip">How long your round lasts. 30s is a quick challenge, 60s is the classic, 90s for a longer session.</div>
-          </div>
-        </div>
-      </div>
-      <button class="pregame-play-btn" onclick="startGame()">Play</button>
-      <details>
-        <summary>Memory tricks</summary>
-        <div class="cheat-sheet">
-          <div class="mnemonic">
-            <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
-            <strong>Treble / Guitar spaces:</strong> FACE<br>
-            <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
-            <strong>Bass spaces:</strong> All Cows Eat Grass
-          </div>
-        </div>
-      </details>
-    </div>
-
-    <!-- Active game layout — hidden pre-game -->
-    <div id="active-game" style="display:none; flex-direction:column; gap:12px;">
-      <!-- Score row -->
-      <div class="score-row" id="score-row">
-        <div class="score-hero-wrap">
-          <div class="score-hero" id="score">0</div>
-          <div class="score-hero-label">score</div>
-        </div>
-        <div class="score-divider"></div>
-        <div class="score-pair">
-          <div class="score-secondary">
-            <span class="score-secondary-num" id="streak">0</span>
-            <span class="score-secondary-label">streak</span>
-          </div>
-          <div class="score-secondary">
-            <span class="score-secondary-num" id="best">—</span>
-            <span class="score-secondary-label">best</span>
-          </div>
-        </div>
-        <div class="score-timer">
-          <div class="timer-wrap">
-            <div class="timer-circle" id="timer-circle" onclick="timerTap()">
-              <svg class="timer-ring" width="64" height="64" viewBox="0 0 64 64">
-                <circle class="timer-track" cx="32" cy="32" r="27"/>
-                <circle class="timer-prog" id="timer-prog" cx="32" cy="32" r="27"/>
-              </svg>
-              <div class="timer-inner">
-                <div class="timer-icon" id="timer-icon"></div>
-              </div>
+        <div class="pregame-selectors">
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="key-select" onchange="onKeyChange()"></select>
+            <div class="info-nub">i
+              <div class="info-tooltip">The key signature appears on the staff. Note buttons show natural names — apply the key yourself.</div>
             </div>
-            <div class="timer-time-label" id="timer-label">—</div>
+          </div>
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="clef-select" onchange="onClefChange()">
+              <option value="treble">Treble</option>
+              <option value="bass">Bass</option>
+              <option value="guitar">Guitar (8vb)</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">Treble covers E4–F5. Bass covers G2–A3. Guitar (8vb) reads like treble but sounds an octave lower.</div>
+            </div>
+          </div>
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="duration-select" onchange="onDurationChange()">
+              <option value="30">30 seconds</option>
+              <option value="60" selected>60 seconds</option>
+              <option value="90">90 seconds</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">How long your round lasts. 30s is a quick challenge, 60s is the classic, 90s for a longer session.</div>
+            </div>
           </div>
         </div>
+        <button class="pregame-play-btn" onclick="startGame()">Play</button>
+        <details>
+          <summary>Memory tricks</summary>
+          <div class="cheat-sheet">
+            <div class="mnemonic">
+              <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
+              <strong>Treble / Guitar spaces:</strong> FACE<br>
+              <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
+              <strong>Bass spaces:</strong> All Cows Eat Grass
+            </div>
+          </div>
+        </details>
       </div>
 
-      <!-- Staff card -->
-      <div class="staff-card" id="staff-card">
-        <div class="hs-toast" id="hs-toast"></div>
-        <div class="answer-toast" id="answer-toast"></div>
-        <div class="pause-overlay" id="overlay-pause" onclick="timerTap()">
-          <div class="pause-label">Paused — tap timer to resume</div>
-        </div>
-        <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
-      </div>
-
-      <div class="choices" id="choices" style="display:none"></div>
-      <div class="feedback" id="feedback"></div>
-
-      <details>
-        <summary>Memory tricks</summary>
-        <div class="cheat-sheet">
-          <div class="mnemonic">
-            <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
-            <strong>Treble / Guitar spaces:</strong> FACE<br>
-            <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
-            <strong>Bass spaces:</strong> All Cows Eat Grass
+      <!-- Active game layout -->
+      <div id="active-game" style="display:none; flex-direction:column; gap:12px;">
+        <div class="score-row" id="score-row">
+          <div class="score-hero-wrap">
+            <div class="score-hero" id="score">0</div>
+            <div class="score-hero-label">score</div>
+          </div>
+          <div class="score-divider"></div>
+          <div class="score-pair">
+            <div class="score-secondary">
+              <span class="score-secondary-num" id="streak">0</span>
+              <span class="score-secondary-label">streak</span>
+            </div>
+            <div class="score-secondary">
+              <span class="score-secondary-num" id="best">—</span>
+              <span class="score-secondary-label">best</span>
+            </div>
+          </div>
+          <div class="score-timer">
+            <div class="timer-wrap">
+              <div class="timer-circle" id="timer-circle" onclick="timerTap()">
+                <svg class="timer-ring" width="64" height="64" viewBox="0 0 64 64">
+                  <circle class="timer-track" cx="32" cy="32" r="27"/>
+                  <circle class="timer-prog" id="timer-prog" cx="32" cy="32" r="27"/>
+                </svg>
+                <div class="timer-inner">
+                  <div class="timer-icon" id="timer-icon"></div>
+                </div>
+              </div>
+              <div class="timer-time-label" id="timer-label">—</div>
+            </div>
           </div>
         </div>
-      </details>
-    </div><!-- /active-game -->
+
+        <div class="staff-card" id="staff-card">
+          <div class="hs-toast" id="hs-toast"></div>
+          <div class="answer-toast" id="answer-toast"></div>
+          <div class="pause-overlay" id="overlay-pause" onclick="timerTap()">
+            <div class="pause-label">Paused — tap timer to resume</div>
+          </div>
+          <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <div class="choices" id="choices" style="display:none"></div>
+        <div class="feedback" id="feedback"></div>
+
+        <details>
+          <summary>Memory tricks</summary>
+          <div class="cheat-sheet">
+            <div class="mnemonic">
+              <strong>Treble / Guitar lines:</strong> Every Good Boy Does Fine<br>
+              <strong>Treble / Guitar spaces:</strong> FACE<br>
+              <strong>Bass lines:</strong> Good Boys Do Fine Always<br>
+              <strong>Bass spaces:</strong> All Cows Eat Grass
+            </div>
+          </div>
+        </details>
+      </div>
+
     </div><!-- /game-ui -->
 
-    <!-- Recap full-page view -->
+    <!-- Recap screen -->
     <div id="recap-view">
       <canvas id="recap-confetti"></canvas>
       <div class="recap-big-score" id="recap-score">0</div>
@@ -512,7 +165,6 @@
         </button>
       </div>
     </div>
-
   </div>
 
   <!-- LEADERBOARD TAB -->
@@ -526,580 +178,34 @@
   </div>
 </div>
 
+<!--
+  SCRIPT LOADING ORDER — this matters!
+  Each file depends on the ones above it being loaded first.
+
+  1. Tone.js     — external audio library (CDN)
+  2. staff.js    — KEY_SIGS, note bases, drawStaff()
+  3. synth.js    — playNote() — needs NOTE_FREQS
+  4. pitch.js    — startPitchDetection() — standalone
+  5. leaderboard.js — saveToLeaderboard(), fetchLeaderboard()
+  6. name-the-notes.js — game logic — needs everything above
+  7. play-the-notes.js — game logic — needs pitch.js + staff.js
+  8. main.js     — theme, tabs, init — needs everything above
+-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<script src="js/staff.js"></script>
+<script src="js/audio/synth.js"></script>
+<script src="js/audio/pitch.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/games/name-the-notes.js"></script>
+<script src="js/games/play-the-notes.js"></script>
+<script src="js/main.js"></script>
+
 <script>
-// ── Theme ─────────────────────────────────────────────────────────────────
-let darkMode = localStorage.getItem('mntr-dark') === '1';
-function applyTheme() {
-  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-  setThemeIcon();
-  if (current) drawStaff(current);
-}
-function toggleDark() {
-  darkMode = !darkMode;
-  localStorage.setItem('mntr-dark', darkMode ? '1' : '0');
-  applyTheme();
-}
-
-// ── Audio ─────────────────────────────────────────────────────────────────
-let muted = localStorage.getItem('mntr-muted') === null ? true : localStorage.getItem('mntr-muted') === '1';
-let activeSynth = null;
-
-const ICON_SOUND_ON  = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
-const ICON_MUTED     = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`;
-const ICON_MOON      = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
-const ICON_SUN       = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
-
-function setMuteIcon() {
-  document.getElementById('mute-icon').innerHTML = muted ? ICON_MUTED : ICON_SOUND_ON;
-}
-function setThemeIcon() {
-  document.getElementById('theme-icon').innerHTML = darkMode ? ICON_SUN : ICON_MOON;
-}
-
-function toggleMute() {
-  muted = !muted;
-  localStorage.setItem('mntr-muted', muted ? '1' : '0');
-  setMuteIcon();
-}
-
-const NOTE_FREQS = {
-  'C2':65.41,'D2':73.42,'E2':82.41,'F2':87.31,'G2':98.00,'A2':110.00,'B2':123.47,
-  'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196.00,'A3':220.00,'B3':246.94,
-  'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392.00,'A4':440.00,'B4':493.88,
-  'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,
-  'C#2':69.30,'D#2':77.78,'F#2':92.50,'G#2':103.83,'A#2':116.54,
-  'C#3':138.59,'D#3':155.56,'F#3':185.00,'G#3':207.65,'A#3':233.08,
-  'C#4':277.18,'D#4':311.13,'F#4':369.99,'G#4':415.30,'A#4':466.16,
-  'C#5':554.37,'D#5':622.25,'F#5':739.99,
-  'Bb2':116.54,'Eb2':77.78,'Ab2':103.83,'Db2':69.30,'Gb2':92.50,
-  'Bb3':233.08,'Eb3':155.56,'Ab3':207.65,'Db3':138.59,'Gb3':185.00,
-  'Bb4':466.16,'Eb4':311.13,'Ab4':415.30,'Db4':277.18,'Gb4':369.99,
-};
-
-async function playNote(noteName) {
-  if (muted || !window.Tone) return;
-  const freq = NOTE_FREQS[noteName];
-  if (!freq) return;
-  try {
-    await Tone.start();
-    if (activeSynth) { try { activeSynth.dispose(); } catch(e) {} }
-    activeSynth = new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.002, decay: 0.8, sustain: 0.3, release: 2.0 },
-      volume: -6
-    }).toDestination();
-    activeSynth.triggerAttackRelease(freq, '4n');
-  } catch(e) {}
-}
-
-// ── Confetti ──────────────────────────────────────────────────────────────
-function launchConfetti() {
-  const canvas = document.getElementById('recap-confetti');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const ctx = canvas.getContext('2d');
-  const colors = ['#1D9E75','#5DCAA5','#185FA5','#EF9F27','#E24B4A','#f1efe8','#FAC775'];
-  const pieces = Array.from({length: 100}, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * -200 - 10,
-    r: Math.random() * 7 + 3,
-    c: colors[Math.floor(Math.random() * colors.length)],
-    vx: (Math.random() - 0.5) * 4,
-    vy: Math.random() * 4 + 2,
-    rot: Math.random() * 360,
-    vrot: (Math.random() - 0.5) * 10
-  }));
-  let frame, elapsed = 0;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    pieces.forEach(p => {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot * Math.PI / 180);
-      ctx.fillStyle = p.c;
-      ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
-      ctx.restore();
-      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
-    });
-    elapsed++;
-    if (elapsed < 120) frame = requestAnimationFrame(draw);
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  if (frame) cancelAnimationFrame(frame);
-  draw();
-}
-
-// ── Answer toast ──────────────────────────────────────────────────────────
-let answerToastTimer = null;
-function showAnswerToast(text, isCorrect) {
-  const t = document.getElementById('answer-toast');
-  t.textContent = text;
-  t.className = 'answer-toast' + (isCorrect ? '' : ' wrong');
-  t.classList.add('show');
-  clearTimeout(answerToastTimer);
-  answerToastTimer = setTimeout(() => t.classList.remove('show'), 700);
-}
-
-// ── Intro ─────────────────────────────────────────────────────────────────
-function dismissIntro() {
-  document.getElementById('intro-modal').classList.remove('show');
-  localStorage.setItem('mntr-seen-intro', '1');
-  showPregame();
-}
-
-// ── Home navigation ────────────────────────────────────────────────────────
-function goHome() {
-  if (gameActive) { clearInterval(timerInterval); gameActive = false; paused = false; }
-  switchTab('game');
-  showPregame();
-}
-
-function toMMSS(secs) {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return m + ':' + String(s).padStart(2, '0');
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  if (name === 'leaderboard' && gameActive && !paused) togglePause();
-  document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['game','leaderboard'][i] === name);
-  });
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'leaderboard') fetchLeaderboard();
-}
-
-// ── Key signatures ────────────────────────────────────────────────────────
-const KEY_SIGS = [
-  { label:'C major', short:'C',  acc:{} },
-  { label:'G major', short:'G',  acc:{F:'#'} },
-  { label:'D major', short:'D',  acc:{F:'#',C:'#'} },
-  { label:'A major', short:'A',  acc:{F:'#',C:'#',G:'#'} },
-  { label:'E major', short:'E',  acc:{F:'#',C:'#',G:'#',D:'#'} },
-  { label:'F major', short:'F',  acc:{B:'b'} },
-  { label:'Bb major',short:'Bb', acc:{B:'b',E:'b'} },
-  { label:'Eb major',short:'Eb', acc:{B:'b',E:'b',A:'b'} },
-  { label:'Ab major',short:'Ab', acc:{B:'b',E:'b',A:'b',D:'b'} },
-];
-
-const KS_POSITIONS = {
-  treble: { sharps:[8,5,9,6,3,7,4], flats:[4,7,3,6,2,5,1] },
-  bass:   { sharps:[6,3,7,4,1,5,2], flats:[2,5,1,4,0,3,6] }
-};
-
-const TREBLE_BASE = [
-  {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},{name:'A4',step:3},
-  {name:'B4',step:4},{name:'C5',step:5},{name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
-];
-const BASS_BASE = [
-  {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
-  {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
-];
-const GUITAR_BASE = [
-  {name:'E2',step:0},{name:'F2',step:1},{name:'G2',step:2},{name:'A2',step:3},
-  {name:'B2',step:4},{name:'C3',step:5},{name:'D3',step:6},{name:'E3',step:7},{name:'F3',step:8},
-];
-
-function applyKey(base, acc) {
-  return base.map(n => ({
-    name: n.name, step: n.step,
-    actualName: acc[n.name[0]] ? n.name[0] + acc[n.name[0]] + n.name.slice(1) : n.name
-  }));
-}
-
-// ── State ─────────────────────────────────────────────────────────────────
-let clef = 'treble', keyIndex = 0, gameDuration = 5;
-let score = 0, streak = 0, current = null, answered = false;
-let timeLeft = 5, timerInterval = null, gameActive = false, paused = false;
-let lastScore = 0;
-
-const ks = document.getElementById('key-select');
-KEY_SIGS.forEach((k, i) => {
-  const o = document.createElement('option'); o.value = i; o.textContent = k.label; ks.appendChild(o);
-});
-
-function bestKey() { return 'mntr3-best-' + KEY_SIGS[keyIndex].short + '-' + clef; }
-function loadBest() {
-  const b = parseInt(localStorage.getItem(bestKey()) || '0');
-  document.getElementById('best').textContent = b > 0 ? b : '—';
-  return b;
-}
-function onKeyChange() { keyIndex = parseInt(ks.value); loadBest(); if (gameActive && !paused) nextQuestion(); }
-function onClefChange() {
-  clef = document.getElementById('clef-select').value;
-  loadBest();
-  if (gameActive && !paused) nextQuestion();
-  else { const notes = applyKey(clef === 'bass' ? BASS_BASE : clef === 'guitar' ? GUITAR_BASE : TREBLE_BASE, KEY_SIGS[keyIndex].acc); drawStaff(notes[4]); }
-}
-function onDurationChange() {
-  gameDuration = parseInt(document.getElementById('duration-select').value);
-}
-function setClef(c) { clef = c; loadBest(); if (gameActive && !paused) nextQuestion(); }
-
-// ── Timer icon helpers ────────────────────────────────────────────────────
-const SVG_PLAY  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
-const SVG_PAUSE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="5" x2="8" y2="19"/><line x1="16" y1="5" x2="16" y2="19"/></svg>`;
-
-function setTimerIcon(state) {
-  document.getElementById('timer-icon').innerHTML = state === 'play' ? SVG_PLAY : SVG_PAUSE;
-}
-
-function setTimerDisplay(secs) {
-  const label = document.getElementById('timer-label');
-  if (secs === null) { label.textContent = '—'; return; }
-  label.textContent = toMMSS(secs);
-  label.className = secs <= 10 ? 'timer-time-label warning' : 'timer-time-label';
-}
-
-// ── Game ──────────────────────────────────────────────────────────────────
-
-// timerTap: only pause/resume during active game
-function timerTap() {
-  if (gameActive) togglePause();
-}
-
-function showPregame() {
-  document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('active-game').style.display = 'none';
-  document.getElementById('game-ui').style.display = '';
-  document.getElementById('pregame-screen').classList.add('show');
-  loadBest();
-}
-
-function startGame() {
-  score = 0; streak = 0; timeLeft = gameDuration; answered = false; gameActive = true; paused = false;
-  document.getElementById('score').textContent = '0';
-  document.getElementById('streak').textContent = '0';
-  setTimerDisplay(gameDuration);
-  document.getElementById('timer-prog').className = 'timer-prog';
-  const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray = circ;
-  document.getElementById('timer-prog').style.strokeDashoffset = '0';
-  document.getElementById('timer-prog').className = 'timer-prog';
-  document.getElementById('pregame-screen').classList.remove('show');
-  document.getElementById('active-game').style.display = 'flex';
-  document.getElementById('overlay-pause').classList.remove('show');
-  document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('game-ui').style.display = '';
-  document.getElementById('choices').style.display = 'grid';
-  document.getElementById('feedback').textContent = '';
-  setTimerIcon('pause');
-  const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Save'; saveBtn.disabled = false;
-  saveBtn.onclick = saveToLeaderboard;
-  loadBest();
-  nextQuestion();
-  clearInterval(timerInterval);
-  timerInterval = setInterval(tick, 1000);
-}
-
-function togglePause() {
-  if (!gameActive) return;
-  paused = !paused;
-  if (paused) {
-    clearInterval(timerInterval);
-    document.getElementById('overlay-pause').classList.add('show');
-    document.getElementById('choices').style.display = 'none';
-    setTimerIcon('play');
-  } else {
-    document.getElementById('overlay-pause').classList.remove('show');
-    document.getElementById('choices').style.display = 'grid';
-    setTimerIcon('pause');
-    timerInterval = setInterval(tick, 1000);
-  }
-}
-
-function showPregame() {
-  document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('active-game').style.display = 'none';
-  document.getElementById('game-ui').style.display = '';
-  document.getElementById('pregame-screen').classList.add('show');
-  loadBest();
-}
-
-function tick() {
-  timeLeft--;
-  setTimerDisplay(timeLeft);
-  const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray = circ;
-  document.getElementById('timer-prog').style.strokeDashoffset = circ * (1 - timeLeft / gameDuration);
-  if (timeLeft <= 10) {
-    document.getElementById('timer-prog').className = 'timer-prog warning';
-  }
-  if (timeLeft <= 0) endGame();
-}
-
-function endGame() {
-  clearInterval(timerInterval);
-  gameActive = false; paused = false;
-  lastScore = score;
-  setTimerIcon('play');
-  document.getElementById('active-game').style.display = 'none';
-  document.getElementById('overlay-pause').classList.remove('show');
-  const prev = parseInt(localStorage.getItem(bestKey()) || '0');
-  const isNew = lastScore > prev;
-  if (isNew) localStorage.setItem(bestKey(), lastScore);
-  document.getElementById('recap-score').textContent = lastScore;
-  document.getElementById('recap-sub-line').textContent = (lastScore === 1 ? 'Note' : 'Notes') + ' in ' + gameDuration + ' seconds';
-  document.getElementById('recap-streak-line').textContent = 'Best streak: ' + streak;
-  document.getElementById('recap-new-best').style.display = (isNew && lastScore > 0) ? 'block' : 'none';
-  const savedName = localStorage.getItem('mntr-playername') || '';
-  document.getElementById('player-name').value = savedName;
-  const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Save'; saveBtn.disabled = false;
-  saveBtn.onclick = saveToLeaderboard;
-  document.getElementById('recap-view').classList.add('show');
-  loadBest();
-  setTimeout(launchConfetti, 150);
-}
-
-function noteSet() {
-  const base = clef === 'bass' ? BASS_BASE : clef === 'guitar' ? GUITAR_BASE : TREBLE_BASE;
-  return applyKey(base, KEY_SIGS[keyIndex].acc);
-}
-
-function nextQuestion() {
-  answered = false;
-  document.getElementById('feedback').textContent = '';
-  const notes = noteSet();
-  current = notes[Math.floor(Math.random() * notes.length)];
-  drawStaff(current);
-  buildChoices(current, notes);
-  playNote(current.actualName);
-}
-
-function buildChoices(correct, notes) {
-  const pool = notes.filter(n => n.name !== correct.name).sort(() => Math.random() - 0.5).slice(0, 3);
-  const opts = [...pool, correct].sort(() => Math.random() - 0.5);
-  const c = document.getElementById('choices');
-  c.innerHTML = '';
-  opts.forEach(note => {
-    const btn = document.createElement('button');
-    btn.className = 'choice-btn';
-    btn.textContent = note.name;
-    btn.dataset.name = note.name;
-    btn.onclick = () => checkAnswer(note.name, btn);
-    c.appendChild(btn);
-  });
-}
-
-function checkAnswer(chosen, btn) {
-  if (answered || !gameActive || paused) return;
-  answered = true;
-  document.querySelectorAll('.choice-btn').forEach(b => {
-    b.disabled = true;
-    if (b.dataset.name === current.name) b.classList.add('correct');
-  });
-  const fb = document.getElementById('feedback');
-  if (chosen === current.name) {
-    score++; streak++;
-    document.getElementById('score').textContent = score;
-    document.getElementById('streak').textContent = streak;
-    fb.textContent = streak >= 3 ? 'Correct! ' + streak + ' in a row!' : 'Correct!';
-    fb.style.color = 'var(--correct-text)';
-    showAnswerToast('✓', true);
-    const prev = parseInt(localStorage.getItem(bestKey()) || '0');
-    if (score > prev) {
-      localStorage.setItem(bestKey(), score);
-      document.getElementById('best').textContent = score;
-      showToast('New high score!');
-    }
-  } else {
-    btn.classList.add('wrong'); streak = 0;
-    document.getElementById('streak').textContent = '0';
-    fb.textContent = 'Not quite — it was ' + current.name + '.';
-    fb.style.color = 'var(--wrong-text)';
-    showAnswerToast(current.name, false);
-  }
-  setTimeout(() => { if (gameActive && !paused) nextQuestion(); }, 600);
-}
-
-function showToast(msg) {
-  const t = document.getElementById('hs-toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
-}
-
-// ── Share ─────────────────────────────────────────────────────────────────
-function shareScore() {
-  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  const text = `🎼 Name the Notes\n⭐ ${lastScore} notes in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel}\nhttps://notetrainer-eight.vercel.app`;
-  if (navigator.share) {
-    navigator.share({ text }).catch(() => {});
-  } else {
-    navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
-  }
-}
-
-// ── Staff drawing ─────────────────────────────────────────────────────────
-function noteYPos(step, topLine, gap) { return topLine + 4 * gap - step * (gap / 2); }
-
-function drawStaff(note) {
-  const svg = document.getElementById('staff-svg');
-  svg.innerHTML = '';
-  const topLine = 25, gap = 12, ns = 'http://www.w3.org/2000/svg';
-  const isDark = darkMode;
-  const lineCol   = isDark ? '#666' : '#888';
-  const clefCol   = isDark ? '#aaa' : '#666';
-  const ledgerCol = isDark ? '#999' : '#444';
-  const noteCol   = isDark ? '#e0dfd8' : '#1a1a18'; // black note head
-  const accCol    = isDark ? '#aaa' : '#444';
-
-  function el(tag, attrs, text) {
-    const e = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
-
-  for (let i = 0; i < 5; i++) {
-    const y = topLine + i * gap;
-    svg.appendChild(el('line', {x1:40,x2:300,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
-  }
-
-  if (clef === 'bass') {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol}, '𝄢'));
-  } else {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol}, '𝄞'));
-    if (clef === 'guitar')
-      svg.appendChild(el('text', {x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'}, '8'));
-  }
-
-  const acc = KEY_SIGS[keyIndex].acc;
-  const accLetters = Object.keys(acc);
-  if (accLetters.length > 0) {
-    const isSharp = acc[accLetters[0]] === '#';
-    const clefType = clef === 'bass' ? 'bass' : 'treble';
-    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
-    const symbol = isSharp ? '♯' : '♭';
-    let ksx = 46;
-    accLetters.forEach((_, i) => {
-      const ky = noteYPos(positions[i], topLine, gap);
-      svg.appendChild(el('text', {x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'}, symbol));
-      ksx += 10;
-    });
-  }
-
-  const noteCx = accLetters.length > 0 ? 185 : 170;
-  const cy = noteYPos(note.step, topLine, gap), r = 7;
-  if (note.step === 0)
-    svg.appendChild(el('line', {x1:noteCx-r-4,x2:noteCx+r+4,y1:cy,y2:cy,stroke:ledgerCol,'stroke-width':'1.5'}));
-  if (note.step === 8) {
-    const ly = topLine - gap;
-    svg.appendChild(el('line', {x1:noteCx-r-4,x2:noteCx+r+4,y1:ly,y2:ly,stroke:ledgerCol,'stroke-width':'1.5'}));
-  }
-
-  svg.appendChild(el('ellipse', {cx:noteCx,cy,rx:r,ry:Math.round(r*0.72),fill:noteCol,transform:`rotate(-15,${noteCx},${cy})`}));
-  const stemUp = note.step < 4;
-  svg.appendChild(el('line', {
-    x1:stemUp?noteCx+r-1:noteCx-r+1, x2:stemUp?noteCx+r-1:noteCx-r+1,
-    y1:cy, y2:stemUp?cy-32:cy+32, stroke:noteCol,'stroke-width':'1.5'
-  }));
-}
-
-// ── Supabase ──────────────────────────────────────────────────────────────
-const SB_URL = 'https://mgkgyzkfdnptfpnrhczu.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1na2d5emtmZG5wdGZwbnJoY3p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyODEsImV4cCI6MjA5MTQyNTI4MX0.qp95iZvyI33i6jiwxXXFf0cClyg0pSNT2-3YFEII18g';
-
-async function sbFetch(path, options = {}) {
-  const res = await fetch(SB_URL + path, {
-    ...options,
-    headers: {
-      'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json', 'Prefer': options.prefer || '',
-      ...options.headers
-    }
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
-
-let lbFilter = 'all', lbCache = [];
-
-async function saveToLeaderboard() {
-  const nameEl = document.getElementById('player-name');
-  const name = nameEl.value.trim() || 'Anonymous';
-  localStorage.setItem('mntr-playername', name);
-  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
-  try {
-    await sbFetch('/rest/v1/leaderboard', {
-      method: 'POST', prefer: 'return=minimal',
-      body: JSON.stringify({ name, score: lastScore, clef: clefLabel, key: KEY_SIGS[keyIndex].label })
-    });
-    showToast('Saved!');
-    saveBtn.textContent = 'Saved ✓'; saveBtn.disabled = true;
-  } catch(e) {
-    console.error('Save error:', e.message);
-    saveBtn.textContent = 'Save'; saveBtn.disabled = false;
-    saveBtn.onclick = saveToLeaderboard;
-    showToast('Could not save — try again');
-    return;
-  }
-  fetchLeaderboard();
-}
-
-async function fetchLeaderboard() {
-  try {
-    const data = await sbFetch('/rest/v1/leaderboard?select=*&order=score.desc&limit=100', { method:'GET', prefer:'return=representation' });
-    lbCache = data || [];
-    renderLeaderboard();
-  } catch(e) {
-    document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Could not load scores.</div>';
-  }
-}
-
-function renderLeaderboard() {
-  const keys = ['all', ...new Set(lbCache.map(e => e.key))];
-  const fEl = document.getElementById('lb-filters');
-  fEl.innerHTML = '';
-  keys.forEach(k => {
-    const btn = document.createElement('button');
-    btn.className = 'lb-filter' + (lbFilter === k ? ' active' : '');
-    btn.textContent = k === 'all' ? 'All keys' : k;
-    btn.onclick = () => { lbFilter = k; renderLeaderboard(); };
-    fEl.appendChild(btn);
-  });
-  const filtered = lbFilter === 'all' ? lbCache : lbCache.filter(e => e.key === lbFilter);
-  const list = document.getElementById('lb-list');
-  list.innerHTML = '';
-  if (!filtered.length) {
-    list.innerHTML = '<div class="lb-empty">No scores yet — play a round and save your name!</div>';
-    return;
-  }
-  filtered.forEach((e, i) => {
-    const row = document.createElement('div');
-    row.className = 'lb-row';
-    const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
-    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
-    const date = new Date(e.created_at).toLocaleDateString();
-    row.innerHTML = `
-      <div class="lb-rank ${rankClass}">${medal}</div>
-      <div><div class="lb-name">${escHtml(e.name)}</div><div class="lb-meta">${escHtml(e.clef)} · ${escHtml(e.key)} · ${date}</div></div>
-      <div class="lb-score">${e.score}</div>`;
-    list.appendChild(row);
-  });
-}
-
-function escHtml(s) {
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────
-applyTheme();
-setMuteIcon();
-setThemeIcon();
-gameDuration = parseInt(document.getElementById('duration-select').value);
-loadBest();
-setTimerIcon('play');
-setTimerDisplay(null);
-showPregame();
-fetchLeaderboard();
+  // Kick everything off once all scripts are loaded
+  initNameTheNotes();
+  initPlayTheNotes();
+  initApp();
 </script>
+
 </body>
 </html>
