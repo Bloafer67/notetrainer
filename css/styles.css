@@ -290,7 +290,31 @@ svg#staff-svg { width: 100%; display: block; }
 .lb-meta { font-size: 11px; color: var(--text3); }
 .lb-score { font-size: 18px; font-weight: 500; color: var(--primary); text-align: right; }
 
-/* ── Memory tricks ────────────────────────────────────────────────────── */
+/* ── Game mode switcher ───────────────────────────────────────────────── */
+.game-mode-switcher {
+  display: flex; align-items: center; gap: 8px;
+}
+.game-mode-emoji { font-size: 28px; line-height: 1; }
+.game-mode-select {
+  font-family: inherit; font-size: 18px; font-weight: 600;
+  color: var(--text); background: transparent; border: none;
+  cursor: pointer; appearance: none; letter-spacing: -0.2px;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 2px center;
+}
+.game-mode-select:focus { outline: none; }
+
+/* ── Mic status indicator (Play the Notes) ────────────────────────────── */
+.mic-status {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text3);
+  position: absolute; top: 10px; right: 14px;
+}
+.mic-status.active { color: var(--primary); }
+
+/* ── Pitch line (Play the Notes) ──────────────────────────────────────── */
+#pitch-line { transition: y1 0.04s linear, y2 0.04s linear; }
 details { width: 100%; border-radius: 8px; overflow: hidden; border: 0.5px solid var(--border); background: var(--bg); }
 summary {
   padding: 12px 16px; font-size: 12px; color: var(--text3); cursor: pointer;
