@@ -153,7 +153,6 @@ function endGame() {
   gameActive = false; paused = false;
   lastScore = score;
   setTimerIcon('play');
-  // Clean up Play the Notes mic if that mode was active
   if (window.gameMode === 'play-the-notes') stopPlayTheNotes();
 
   document.getElementById('active-game').style.display = 'none';
@@ -166,17 +165,25 @@ function endGame() {
   document.getElementById('recap-score').textContent = lastScore;
   document.getElementById('recap-sub-line').textContent =
     (lastScore === 1 ? 'Note' : 'Notes') + ' in ' + gameDuration + ' seconds';
-  document.getElementById('recap-streak-line').textContent =
-    'Best streak: ' + streak;
+  document.getElementById('recap-streak-line').textContent = 'Best streak: ' + streak;
   document.getElementById('recap-new-best').style.display =
     (isNew && lastScore > 0) ? 'block' : 'none';
 
-  const savedName = localStorage.getItem('mntr-playername') || '';
-  document.getElementById('player-name').value = savedName;
-  const saveBtn = document.getElementById('save-btn');
-  saveBtn.textContent = 'Save';
-  saveBtn.disabled = false;
-  saveBtn.onclick = saveToLeaderboard;
+  // Check if score qualifies for top 10 on this board
+  const bKey = currentBoardKey();
+  const board = lbCache.filter(e => boardKey(e) === bKey);
+  const qualifies = lastScore > 0 && (board.length < 10 || lastScore >= board[board.length - 1]?.score);
+  const recapForm = document.getElementById('recap-form');
+  if (recapForm) recapForm.style.display = qualifies ? 'flex' : 'none';
+
+  if (qualifies) {
+    const savedName = localStorage.getItem('mntr-playername') || '';
+    document.getElementById('player-name').value = savedName;
+    const saveBtn = document.getElementById('save-btn');
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+    saveBtn.onclick = saveToLeaderboard;
+  }
 
   document.getElementById('recap-view').classList.add('show');
   loadBest();
@@ -188,7 +195,7 @@ function noteSet() {
   const base = clef === 'bass'
     ? BASS_BASE
     : clef === 'guitar'
-    ? GUITAR_BASE
+    ? GUITAR_GAME_BASE   // manageable subset for NTN tap game
     : TREBLE_BASE;
   return applyKey(base, KEY_SIGS[keyIndex].acc);
 }
