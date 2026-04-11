@@ -344,3 +344,57 @@ details[open] summary::after { content: '▾'; }
 .lb-page-btn:hover:not(:disabled) { background: var(--surface2); }
 .lb-page-btn:disabled { opacity: 0.35; cursor: default; }
 .lb-page-info { font-size: 12px; color: var(--text3); }
+
+/* ── Tuner inset (Play the Notes) ─────────────────────────────────────── */
+.ptn-tuner-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--surface);
+  border: 0.5px solid var(--border); border-radius: 10px;
+}
+.ptn-tuner-bar {
+  flex: 1; height: 8px; background: var(--surface2);
+  border-radius: 999px; position: relative; overflow: visible;
+}
+.ptn-tuner-center {
+  position: absolute; left: 50%; top: -3px;
+  width: 1px; height: 14px; background: var(--border2);
+  transform: translateX(-50%);
+}
+.ptn-tuner-needle {
+  position: absolute; top: -4px; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--border2);
+  transform: translateX(-50%);
+  transition: left 0.05s linear, background 0.1s;
+  left: 50%;
+}
+.ptn-tuner-label {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  min-width: 52px; text-align: right; white-space: nowrap;
+}
+
+/* ── Game controls row (exit / restart) ──────────────────────────────── */
+.game-controls-row {
+  display: flex; gap: 8px;
+}
+.game-exit-btn, .game-restart-btn {
+  flex: 1; padding: 8px; border-radius: 8px; font-size: 12px;
+  font-family: inherit; cursor: pointer; font-weight: 500;
+  border: 0.5px solid var(--border2); background: transparent;
+  color: var(--text3); transition: background 0.15s, color 0.15s;
+}
+.game-exit-btn:hover    { background: var(--wrong-bg);   color: var(--wrong-text); }
+.game-restart-btn:hover { background: var(--surface2);   color: var(--text2); }
+
+/* ── Leaderboard highlight ────────────────────────────────────────────── */
+.lb-row-highlight {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+}
+.lb-you {
+  font-size: 10px; font-weight: 600; color: var(--primary);
+  background: var(--primary-light); border-radius: 4px;
+  padding: 1px 5px; margin-left: 4px; vertical-align: middle;
+}
+.lb-board-desc {
+  font-size: 12px; color: var(--text3); padding: 2px 0 6px;
+}
