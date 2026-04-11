@@ -130,6 +130,12 @@
           </div>
         </div>
 
+        <!-- Exit / restart row -->
+        <div class="game-controls-row">
+          <button class="game-exit-btn" onclick="goHome()">✕ Exit</button>
+          <button class="game-restart-btn" onclick="startGame()">↺ Restart</button>
+        </div>
+
         <div class="staff-card" id="staff-card">
           <div class="hs-toast" id="hs-toast"></div>
           <div class="answer-toast" id="answer-toast"></div>
@@ -140,7 +146,17 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             <span id="mic-status-text">Listening…</span>
           </div>
-          <svg id="staff-svg" viewBox="0 0 340 120" xmlns="http://www.w3.org/2000/svg"></svg>
+          <!-- Extended viewBox to show ledger lines above/below staff -->
+          <svg id="staff-svg" viewBox="0 0 340 130" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <!-- Tuner inset — shown only in Play the Notes mode -->
+        <div id="ptn-tuner" style="display:none;" class="ptn-tuner-wrap">
+          <div class="ptn-tuner-bar">
+            <div class="ptn-tuner-center"></div>
+            <div class="ptn-tuner-needle" id="ptn-tuner-needle"></div>
+          </div>
+          <div class="ptn-tuner-label" id="ptn-tuner-label">—</div>
         </div>
 
         <div class="choices" id="choices" style="display:none"></div>
@@ -188,8 +204,11 @@
       <h2>Leaderboard</h2>
       <button class="lb-clear" onclick="fetchLeaderboard()">Refresh</button>
     </div>
+    <div class="lb-game-tabs" id="lb-game-tabs"></div>
     <div class="lb-filters" id="lb-filters"></div>
+    <div class="lb-board-desc" id="lb-board-desc"></div>
     <div class="lb-list" id="lb-list"></div>
+    <div class="lb-pagination" id="lb-pagination"></div>
   </div>
 </div>
 
