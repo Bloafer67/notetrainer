@@ -90,8 +90,16 @@ function togglePause() {
   }
 }
 
-// ── Start game ────────────────────────────────────────────────────────────
+// ── Start game — routes to correct mode ──────────────────────────────────
 function startGame() {
+  if (window.gameMode === 'play-the-notes') {
+    startPlayTheNotes();
+    return;
+  }
+  startNameTheNotes();
+}
+
+function startNameTheNotes() {
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
 
@@ -145,6 +153,8 @@ function endGame() {
   gameActive = false; paused = false;
   lastScore = score;
   setTimerIcon('play');
+  // Clean up Play the Notes mic if that mode was active
+  if (window.gameMode === 'play-the-notes') stopPlayTheNotes();
 
   document.getElementById('active-game').style.display = 'none';
   document.getElementById('overlay-pause').classList.remove('show');
