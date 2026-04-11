@@ -1,163 +1,305 @@
-// ── main.js ──────────────────────────────────────────────────────────────
-// Handles: theme, mute, tabs, navigation, shared UI helpers
-// All other modules import from here via the global window object
-// (no bundler needed — plain script tags in order)
+// ── games/name-the-notes.js ───────────────────────────────────────────────
+// Handles: all Name the Notes game state and logic
+// Depends on: KEY_SIGS, TREBLE_BASE, BASS_BASE, GUITAR_BASE, applyKey (staff.js)
+//             drawStaff (staff.js), playNote (audio/synth.js)
+//             showToast, showAnswerToast, setTimerIcon, setTimerDisplay,
+//             toMMSS, showPregame (main.js)
+//             saveToLeaderboard, fetchLeaderboard (leaderboard.js)
 
-// ── Theme ─────────────────────────────────────────────────────────────────
-let darkMode = localStorage.getItem('mntr-dark') === '1';
+// ── Game state ────────────────────────────────────────────────────────────
+// These are on window so main.js and other modules can read them
+// (e.g. goHome needs to know if gameActive)
+let clef         = 'treble';
+let keyIndex     = 0;
+let gameDuration = 60;  // set from duration-select on init
+let score        = 0;
+let streak       = 0;
+let current      = null;  // the current note object { name, step, actualName }
+let answered     = false;
+let timeLeft     = 60;
+let timerInterval = null;
+let gameActive   = false;
+let paused       = false;
+let lastScore    = 0;
 
-function applyTheme() {
-  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-  setThemeIcon();
-  if (window.current) drawStaff(window.current); // re-render staff with new colours
-}
+// Expose to window so main.js can reference them
+Object.defineProperties(window, {
+  gameActive:    { get: () => gameActive,    set: v => { gameActive = v; } },
+  paused:        { get: () => paused,        set: v => { paused = v; } },
+  timerInterval: { get: () => timerInterval, set: v => { timerInterval = v; } },
+  current:       { get: () => current },
+});
 
-function toggleDark() {
-  darkMode = !darkMode;
-  localStorage.setItem('mntr-dark', darkMode ? '1' : '0');
-  applyTheme();
-}
-
-// ── Mute ──────────────────────────────────────────────────────────────────
-let muted = localStorage.getItem('mntr-muted') === null
-  ? true
-  : localStorage.getItem('mntr-muted') === '1';
-
-function toggleMute() {
-  muted = !muted;
-  localStorage.setItem('mntr-muted', muted ? '1' : '0');
-  setMuteIcon();
-}
-
-// ── Icon helpers ──────────────────────────────────────────────────────────
-const ICON_SOUND_ON = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
-const ICON_MUTED    = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`;
-const ICON_MOON     = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
-const ICON_SUN      = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
-
-function setMuteIcon() {
-  document.getElementById('mute-icon').innerHTML = muted ? ICON_MUTED : ICON_SOUND_ON;
-}
-function setThemeIcon() {
-  document.getElementById('theme-icon').innerHTML = darkMode ? ICON_SUN : ICON_MOON;
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  // Pause the game if switching away mid-round
-  if (name === 'leaderboard' && window.gameActive && !window.paused) togglePause();
-  document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['game', 'leaderboard'][i] === name);
+// ── Setup controls ────────────────────────────────────────────────────────
+function initNameTheNotes() {
+  // Populate key selector
+  const ks = document.getElementById('key-select');
+  KEY_SIGS.forEach((k, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = k.label;
+    ks.appendChild(o);
   });
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'leaderboard') fetchLeaderboard();
+  gameDuration = parseInt(document.getElementById('duration-select').value);
 }
 
-// ── Game mode ─────────────────────────────────────────────────────────────
-// 'name-the-notes' | 'play-the-notes'
-let gameMode = 'name-the-notes';
-
-const GAME_MODE_CONFIG = {
-  'name-the-notes': { emoji: '🎼', pregameId: 'pregame-ntn' },
-  'play-the-notes': { emoji: '🎸', pregameId: 'pregame-ptn' },
-};
-
-function onGameModeChange() {
-  const select = document.getElementById('game-mode-select');
-  gameMode = select.value;
-  const cfg = GAME_MODE_CONFIG[gameMode];
-  // Swap emoji
-  document.getElementById('game-mode-emoji').textContent = cfg.emoji;
-  // Swap pregame description
-  Object.values(GAME_MODE_CONFIG).forEach(c => {
-    document.getElementById(c.pregameId).style.display = 'none';
-  });
-  document.getElementById(cfg.pregameId).style.display = '';
-  // Hide note buttons for Play the Notes (pitch-based answering)
-  document.getElementById('choices').style.display = 'none';
-  showPregame();
+function bestKey() {
+  return 'mntr3-best-' + KEY_SIGS[keyIndex].short + '-' + clef;
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────
-function goHome() {
-  if (window.gameActive) {
-    clearInterval(window.timerInterval);
-    window.gameActive = false;
-    window.paused = false;
+function loadBest() {
+  const b = parseInt(localStorage.getItem(bestKey()) || '0');
+  const el = document.getElementById('best');
+  if (el) el.textContent = b > 0 ? b : '—';
+  return b;
+}
+
+function onKeyChange() {
+  keyIndex = parseInt(document.getElementById('key-select').value);
+  loadBest();
+  if (gameActive && !paused) nextQuestion();
+}
+
+function onClefChange() {
+  clef = document.getElementById('clef-select').value;
+  loadBest();
+  if (gameActive && !paused) nextQuestion();
+}
+
+function onDurationChange() {
+  gameDuration = parseInt(document.getElementById('duration-select').value);
+}
+
+// ── Timer tap (pause / resume) ────────────────────────────────────────────
+function timerTap() {
+  if (gameActive) togglePause();
+}
+
+function togglePause() {
+  if (!gameActive) return;
+  paused = !paused;
+  if (paused) {
+    clearInterval(timerInterval);
+    document.getElementById('overlay-pause').classList.add('show');
+    document.getElementById('choices').style.display = 'none';
+    setTimerIcon('play');
+  } else {
+    document.getElementById('overlay-pause').classList.remove('show');
+    document.getElementById('choices').style.display = 'grid';
+    setTimerIcon('pause');
+    timerInterval = setInterval(tick, 1000);
   }
-  switchTab('game');
-  showPregame();
 }
 
-// ── Shared toast ──────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.getElementById('hs-toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+// ── Start game — routes to correct mode ──────────────────────────────────
+function startGame() {
+  if (window.gameMode === 'play-the-notes') {
+    startPlayTheNotes();
+    return;
+  }
+  startNameTheNotes();
 }
 
-// ── Answer toast ──────────────────────────────────────────────────────────
-let answerToastTimer = null;
-function showAnswerToast(text, isCorrect) {
-  const t = document.getElementById('answer-toast');
-  t.textContent = text;
-  t.className = 'answer-toast' + (isCorrect ? '' : ' wrong');
-  t.classList.add('show');
-  clearTimeout(answerToastTimer);
-  answerToastTimer = setTimeout(() => t.classList.remove('show'), 700);
-}
+function startNameTheNotes() {
+  score = 0; streak = 0; timeLeft = gameDuration;
+  answered = false; gameActive = true; paused = false;
 
-// ── Timer UI helpers ──────────────────────────────────────────────────────
-const SVG_PLAY  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
-const SVG_PAUSE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="5" x2="8" y2="19"/><line x1="16" y1="5" x2="16" y2="19"/></svg>`;
+  document.getElementById('score').textContent = '0';
+  document.getElementById('streak').textContent = '0';
+  setTimerDisplay(gameDuration);
 
-function setTimerIcon(state) {
-  document.getElementById('timer-icon').innerHTML = state === 'play' ? SVG_PLAY : SVG_PAUSE;
-}
+  const circ = 2 * Math.PI * 27;
+  document.getElementById('timer-prog').style.strokeDasharray = circ;
+  document.getElementById('timer-prog').style.strokeDashoffset = '0';
+  document.getElementById('timer-prog').className = 'timer-prog';
 
-function setTimerDisplay(secs) {
-  const label = document.getElementById('timer-label');
-  if (secs === null) { label.textContent = '—'; return; }
-  label.textContent = toMMSS(secs);
-  label.className = secs <= 10 ? 'timer-time-label warning' : 'timer-time-label';
-}
-
-function toMMSS(secs) {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return m + ':' + String(s).padStart(2, '0');
-}
-
-// Expose gameMode on window so game files can read it
-Object.defineProperty(window, 'gameMode', { get: () => gameMode });
-
-// ── Pregame show/hide ─────────────────────────────────────────────────────
-function showPregame() {
+  document.getElementById('pregame-screen').classList.remove('show');
+  document.getElementById('active-game').style.display = 'flex';
+  document.getElementById('overlay-pause').classList.remove('show');
   document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('active-game').style.display = 'none';
   document.getElementById('game-ui').style.display = '';
-  document.getElementById('pregame-screen').classList.add('show');
-  // Show correct pregame description
-  const cfg = GAME_MODE_CONFIG[gameMode];
-  Object.values(GAME_MODE_CONFIG).forEach(c => {
-    document.getElementById(c.pregameId).style.display = 'none';
-  });
-  document.getElementById(cfg.pregameId).style.display = '';
+  document.getElementById('choices').style.display = 'grid';
+  document.getElementById('feedback').textContent = '';
+
+  setTimerIcon('pause');
+
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.textContent = 'Save';
+  saveBtn.disabled = false;
+  saveBtn.onclick = saveToLeaderboard;
+
   loadBest();
+  nextQuestion();
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-// Called once all scripts have loaded (see index.html bottom of body)
-function initApp() {
-  applyTheme();
-  setMuteIcon();
-  setThemeIcon();
-  window.gameDuration = parseInt(document.getElementById('duration-select').value);
-  loadBest();
+// ── Timer tick ────────────────────────────────────────────────────────────
+function tick() {
+  timeLeft--;
+  setTimerDisplay(timeLeft);
+  const circ = 2 * Math.PI * 27;
+  document.getElementById('timer-prog').style.strokeDasharray = circ;
+  document.getElementById('timer-prog').style.strokeDashoffset =
+    circ * (1 - timeLeft / gameDuration);
+  if (timeLeft <= 10) {
+    document.getElementById('timer-prog').className = 'timer-prog warning';
+  }
+  if (timeLeft <= 0) endGame();
+}
+
+// ── End game ──────────────────────────────────────────────────────────────
+function endGame() {
+  clearInterval(timerInterval);
+  gameActive = false; paused = false;
+  lastScore = score;
   setTimerIcon('play');
-  setTimerDisplay(null);
-  showPregame();
-  fetchLeaderboard();
+  // Clean up Play the Notes mic if that mode was active
+  if (window.gameMode === 'play-the-notes') stopPlayTheNotes();
+
+  document.getElementById('active-game').style.display = 'none';
+  document.getElementById('overlay-pause').classList.remove('show');
+
+  const prev  = parseInt(localStorage.getItem(bestKey()) || '0');
+  const isNew = lastScore > prev;
+  if (isNew) localStorage.setItem(bestKey(), lastScore);
+
+  document.getElementById('recap-score').textContent = lastScore;
+  document.getElementById('recap-sub-line').textContent =
+    (lastScore === 1 ? 'Note' : 'Notes') + ' in ' + gameDuration + ' seconds';
+  document.getElementById('recap-streak-line').textContent =
+    'Best streak: ' + streak;
+  document.getElementById('recap-new-best').style.display =
+    (isNew && lastScore > 0) ? 'block' : 'none';
+
+  const savedName = localStorage.getItem('mntr-playername') || '';
+  document.getElementById('player-name').value = savedName;
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.textContent = 'Save';
+  saveBtn.disabled = false;
+  saveBtn.onclick = saveToLeaderboard;
+
+  document.getElementById('recap-view').classList.add('show');
+  loadBest();
+  setTimeout(launchConfetti, 150);
+}
+
+// ── Note question logic ───────────────────────────────────────────────────
+function noteSet() {
+  const base = clef === 'bass'
+    ? BASS_BASE
+    : clef === 'guitar'
+    ? GUITAR_BASE
+    : TREBLE_BASE;
+  return applyKey(base, KEY_SIGS[keyIndex].acc);
+}
+
+function nextQuestion() {
+  answered = false;
+  document.getElementById('feedback').textContent = '';
+  const notes = noteSet();
+  current = notes[Math.floor(Math.random() * notes.length)];
+  drawStaff(current);
+  buildChoices(current, notes);
+  playNote(current.actualName);
+}
+
+function buildChoices(correct, notes) {
+  const pool = notes
+    .filter(n => n.name !== correct.name)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+  const opts = [...pool, correct].sort(() => Math.random() - 0.5);
+  const c = document.getElementById('choices');
+  c.innerHTML = '';
+  opts.forEach(note => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = note.name;
+    btn.dataset.name = note.name;
+    btn.onclick = () => checkAnswer(note.name, btn);
+    c.appendChild(btn);
+  });
+}
+
+function checkAnswer(chosen, btn) {
+  if (answered) return;
+  answered = true;
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  const fb = document.getElementById('feedback');
+
+  if (chosen === current.name) {
+    btn.classList.add('correct');
+    score++;
+    streak++;
+    document.getElementById('score').textContent = score;
+    document.getElementById('streak').textContent = streak;
+    fb.textContent = '✓ Correct!';
+    fb.style.color = 'var(--correct-text)';
+    showAnswerToast('✓', true);
+    // Flash new best
+    const prev = parseInt(localStorage.getItem(bestKey()) || '0');
+    if (score > prev) {
+      document.getElementById('best').textContent = score;
+      showToast('New high score!');
+    }
+  } else {
+    btn.classList.add('wrong');
+    streak = 0;
+    document.getElementById('streak').textContent = '0';
+    fb.textContent = 'Not quite — it was ' + current.name + '.';
+    fb.style.color = 'var(--wrong-text)';
+    showAnswerToast(current.name, false);
+  }
+
+  setTimeout(() => { if (gameActive && !paused) nextQuestion(); }, 600);
+}
+
+// ── Confetti ──────────────────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.getElementById('recap-confetti');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#1D9E75','#5DCAA5','#185FA5','#EF9F27','#E24B4A','#f1efe8','#FAC775'];
+  const pieces = Array.from({ length: 100 }, () => ({
+    x:    Math.random() * canvas.width,
+    y:    Math.random() * -200 - 10,
+    r:    Math.random() * 7 + 3,
+    c:    colors[Math.floor(Math.random() * colors.length)],
+    vx:   (Math.random() - 0.5) * 4,
+    vy:   Math.random() * 4 + 2,
+    rot:  Math.random() * 360,
+    vrot: (Math.random() - 0.5) * 10,
+  }));
+  let frame, elapsed = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      ctx.restore();
+      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+    });
+    elapsed++;
+    if (elapsed < 120) frame = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  if (frame) cancelAnimationFrame(frame);
+  draw();
+}
+
+// ── Share ─────────────────────────────────────────────────────────────────
+function shareScore() {
+  const clefLabel = clef === 'guitar'
+    ? 'Guitar (8vb)'
+    : clef.charAt(0).toUpperCase() + clef.slice(1);
+  const text = `🎼 Name the Notes\n⭐ ${lastScore} notes in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel}\nhttps://notetrainer-eight.vercel.app`;
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
+  }
 }
