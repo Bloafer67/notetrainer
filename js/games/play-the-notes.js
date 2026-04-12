@@ -87,7 +87,7 @@ function ptnNextQuestion() {
   document.getElementById('feedback').textContent = '';
   const notes = ptnNoteSet();
   current = notes[Math.floor(Math.random() * notes.length)];
-  drawStaff(current, { showLabel: true }); // show note name label
+  drawStaff(current, { showLabel: showNoteNames }); // respect names toggle
   removePitchLine();
 }
 
