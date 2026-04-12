@@ -26,6 +26,7 @@ const SONGS = {
       time:     '4/4',
       tempo:    72,
       clef:     'treble',
+      guitarOctave: true,  // detect one octave lower than written (guitar 8vb)
       sections: [
         { label:'Verse',  startMeasure:1  },
         { label:'Chorus', startMeasure:9  },
