@@ -117,9 +117,8 @@ function pa_onPitchFrame(hz) {
     pa_smoothHz = hz || null;
   }
 
-  pa_updatePitchLine(pa_smoothHz);
-
   if (!hz || pa_noteIndex >= pa_song.notes.length) {
+    pa_updatePitchLine(pa_smoothHz, '#185FA5');
     if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
     return;
   }
@@ -129,7 +128,12 @@ function pa_onPitchFrame(hz) {
   if (!targetHz) { pa_advance(); return; } // rest or unknown — skip
 
   const cents = Math.abs(1200 * Math.log2(hz / targetHz));
-  if (cents <= PA_HIT_CENTS) {
+
+  // Color line green if in range, blue otherwise
+  const inRange = cents <= PA_HIT_CENTS;
+  pa_updatePitchLine(pa_smoothHz, inRange ? '#1D9E75' : '#185FA5');
+
+  if (inRange) {
     if (!pa_hitTimer) {
       pa_hitTimer = setTimeout(() => {
         pa_hitTimer = null;
@@ -138,13 +142,6 @@ function pa_onPitchFrame(hz) {
     }
   } else {
     if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
-  }
-
-  // Update tuner
-  const targetForTuner = NOTE_FREQS[target.pitch];
-  if (targetForTuner) {
-    const centsForTuner = 1200 * Math.log2(hz / targetForTuner);
-    updateTuner(centsForTuner, true);
   }
 }
 
@@ -174,7 +171,6 @@ function pa_advance() {
   pa_scrollToNote(pa_noteIndex);
   // Re-render to update highlight
   pa_render();
-  updateTuner(0, false);
 }
 
 function pa_onSongComplete() {
@@ -365,7 +361,9 @@ function pa_flashNote(idx, color) {
 
 // ── Pitch line ────────────────────────────────────────────────────────────
 let pa_pitchLineY = null;
-function pa_updatePitchLine(hz) {
+let pa_pitchLineColor = '#185FA5';
+function pa_updatePitchLine(hz, color) {
+  pa_pitchLineColor = color || '#185FA5';
   if (!hz) { pa_pitchLineY = null; return; }
   const step     = pa_hzToStep(hz);
   pa_pitchLineY  = pa_stepToY(step);
@@ -375,20 +373,19 @@ function pa_renderPitchLine(svg, el, W) {
   if (pa_pitchLineY === null) return;
   const y = pa_pitchLineY;
   const svgH = PA_SVG_H;
+  const c = pa_pitchLineColor;
 
   if (y < 2) {
-    // Arrow up
     svg.appendChild(el('polygon', {
       points:`${PA_PLAYHEAD_X},4 ${PA_PLAYHEAD_X-8},14 ${PA_PLAYHEAD_X+8},14`,
-      fill:'#185FA5', opacity:'0.8',
+      fill:c, opacity:'0.8',
     }));
     return;
   }
   if (y > svgH - 6) {
-    // Arrow down
     svg.appendChild(el('polygon', {
       points:`${PA_PLAYHEAD_X},${svgH-4} ${PA_PLAYHEAD_X-8},${svgH-14} ${PA_PLAYHEAD_X+8},${svgH-14}`,
-      fill:'#185FA5', opacity:'0.8',
+      fill:c, opacity:'0.8',
     }));
     return;
   }
@@ -396,7 +393,7 @@ function pa_renderPitchLine(svg, el, W) {
   svg.appendChild(el('line', {
     x1: PA_PLAYHEAD_X - 40, x2: PA_PLAYHEAD_X + 40,
     y1: y, y2: y,
-    stroke:'#185FA5', 'stroke-width':'2.5',
+    stroke:c, 'stroke-width':'2.5',
     'stroke-linecap':'round', opacity:'0.85',
   }));
 }
