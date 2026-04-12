@@ -84,7 +84,10 @@ function togglePause() {
     setTimerIcon('play');
   } else {
     document.getElementById('overlay-pause').classList.remove('show');
-    document.getElementById('choices').style.display = 'grid';
+    // Only show choices in Name the Notes mode
+    if (window.gameMode !== 'play-the-notes') {
+      document.getElementById('choices').style.display = 'grid';
+    }
     setTimerIcon('pause');
     timerInterval = setInterval(tick, 1000);
   }
