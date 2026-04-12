@@ -124,8 +124,11 @@ function pa_onPitchFrame(hz) {
   }
 
   const target    = pa_song.notes[pa_noteIndex];
-  const targetHz  = NOTE_FREQS[target.pitch];
+  let targetHz    = NOTE_FREQS[target.pitch];
   if (!targetHz) { pa_advance(); return; } // rest or unknown — skip
+
+  // Guitar 8vb songs: detect one octave lower than written
+  if (pa_song.meta.guitarOctave) targetHz = targetHz / 2;
 
   const cents = Math.abs(1200 * Math.log2(hz / targetHz));
 
@@ -438,17 +441,19 @@ function pa_stepToY(step) {
   return PA_TOP_LINE + 4 * PA_GAP - step * (PA_GAP / 2);
 }
 
-// Hz → step (for pitch line position)
-// Uses NOTE_FREQS for accurate mapping across the treble range
+// Hz → step (for pitch line position on treble staff)
+// For guitar 8vb songs: sounding Hz are one octave below written,
+// but we still want the line to appear at the written visual position.
+// So we double the hz before mapping if guitarOctave is set.
 function pa_hzToStep(hz) {
   if (!hz || hz < 60) return 0;
-  // Map against the treble range that Dink's Song (and most PA songs) use
-  // E3 (164 Hz, step -7) through G5 (784 Hz, step 14)
-  const LO_HZ = NOTE_FREQS['E3'] || 164.81;  // step -7
-  const HI_HZ = NOTE_FREQS['G5'] || 784.00;  // step 14
+  // If guitar 8vb song, shift detected hz up one octave for visual mapping
+  const mappedHz = (pa_song && pa_song.meta.guitarOctave) ? hz * 2 : hz;
+  const LO_HZ = NOTE_FREQS['E3'] || 164.81;  // step -7 (treble)
+  const HI_HZ = NOTE_FREQS['G5'] || 784.00;  // step 14 (treble)
   const LO_STEP = -7;
   const HI_STEP = 14;
-  const t = (Math.log2(hz) - Math.log2(LO_HZ)) / (Math.log2(HI_HZ) - Math.log2(LO_HZ));
+  const t = (Math.log2(mappedHz) - Math.log2(LO_HZ)) / (Math.log2(HI_HZ) - Math.log2(LO_HZ));
   return LO_STEP + (HI_STEP - LO_STEP) * t;
 }
 
