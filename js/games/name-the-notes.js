@@ -111,9 +111,11 @@ function startNameTheNotes() {
   setTimerDisplay(gameDuration);
 
   const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray = circ;
-  document.getElementById('timer-prog').style.strokeDashoffset = '0';
-  document.getElementById('timer-prog').className = 'timer-prog';
+  const prog = document.getElementById('timer-prog');
+  prog.style.strokeDasharray  = circ;
+  prog.style.strokeDashoffset = '0';
+  prog.style.stroke = ''; // clear any warning red from previous game
+  prog.className = 'timer-prog';
 
   document.getElementById('pregame-screen').classList.remove('show');
   document.getElementById('active-game').style.display = 'flex';
@@ -141,11 +143,12 @@ function tick() {
   timeLeft--;
   setTimerDisplay(timeLeft);
   const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray = circ;
-  document.getElementById('timer-prog').style.strokeDashoffset =
-    circ * (1 - timeLeft / gameDuration);
+  const prog = document.getElementById('timer-prog');
+  prog.style.strokeDasharray  = circ;
+  prog.style.strokeDashoffset = circ * (1 - timeLeft / gameDuration);
   if (timeLeft <= 10) {
-    document.getElementById('timer-prog').className = 'timer-prog warning';
+    prog.className = 'timer-prog warning';
+    prog.style.stroke = 'var(--wrong-border)'; // override inline blue
   }
   if (timeLeft <= 0) endGame();
 }
