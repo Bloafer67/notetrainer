@@ -212,8 +212,10 @@ function pa_animFrame(ts) {
       pa_scrollX   = pa_targetX;
       pa_animStart = null;
     }
-    pa_render();
   }
+
+  // Always re-render so the pitch line moves smoothly every frame
+  pa_render();
 
   pa_animRAF = requestAnimationFrame(pa_animFrame);
 }
@@ -437,14 +439,17 @@ function pa_stepToY(step) {
 }
 
 // Hz → step (for pitch line position)
+// Uses NOTE_FREQS for accurate mapping across the treble range
 function pa_hzToStep(hz) {
   if (!hz || hz < 60) return 0;
-  // Convert to nearest semitone relative to E4 (329.63 Hz)
-  const E4_HZ = 329.63;
-  const semitones = 12 * Math.log2(hz / E4_HZ);
-  // Map semitones to steps: each step = half a line gap = 1 diatonic step
-  // Rough diatonic mapping: 2 semitones per step on average
-  return semitones / 2;
+  // Map against the treble range that Dink's Song (and most PA songs) use
+  // E3 (164 Hz, step -7) through G5 (784 Hz, step 14)
+  const LO_HZ = NOTE_FREQS['E3'] || 164.81;  // step -7
+  const HI_HZ = NOTE_FREQS['G5'] || 784.00;  // step 14
+  const LO_STEP = -7;
+  const HI_STEP = 14;
+  const t = (Math.log2(hz) - Math.log2(LO_HZ)) / (Math.log2(HI_HZ) - Math.log2(LO_HZ));
+  return LO_STEP + (HI_STEP - LO_STEP) * t;
 }
 
 // Draw ledger lines for notes outside the staff
