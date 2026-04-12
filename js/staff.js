@@ -35,50 +35,53 @@ const BASS_BASE = [
   {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
 ];
 
-// Guitar 8vb: written in treble clef, sounds an octave lower.
-// "written" names are what appears on staff (treble positions).
-// "sound" names (one octave lower) are used for pitch detection via NOTE_FREQS.
-// Open strings written: E5(hi), B4, G4, D4, A3, E3(lo) — on/near treble staff.
-// Full playable range for PTN: E3 (low E open) through E5 (high E open).
+// Guitar 8vb: treble clef + "8" underneath.
+// Notes are written at treble positions but sound one octave lower.
+// name = written name (what appears on staff / answer buttons)
+// step = treble staff position (0=E4 bottom line, 4=B4 middle line, 7=E5 top space)
+// soundName = sounding pitch used for NOTE_FREQS detection (one octave lower)
+//
+// Open strings on treble staff:
+//   Low E: written E3 (step -7), sounds E2 (82Hz)
+//   A:     written A3 (step -4), sounds A2 (110Hz)
+//   D:     written D4 (step -1), sounds D3 (147Hz)
+//   G:     written G4 (step  2), sounds G3 (196Hz)
+//   B:     written B4 (step  4), sounds B3 (247Hz)  ← middle line!
+//   Hi E:  written E5 (step  7), sounds E4 (330Hz)
 const GUITAR_BASE = [
-  // Below staff — low E and A strings open/low frets
-  {name:'E3', step:-2, soundName:'E2'},  // low E open (82 Hz)
-  {name:'F3', step:-1, soundName:'F2'},
-  // On staff — G string area
-  {name:'G3', step:0,  soundName:'G2'},  // open G or low frets
-  {name:'A3', step:1,  soundName:'A2'},  // open A string (110 Hz)
-  {name:'B3', step:2,  soundName:'B2'},
-  {name:'C4', step:3,  soundName:'C3'},
-  {name:'D4', step:4,  soundName:'D3'},  // open D string (146 Hz)
-  {name:'E4', step:5,  soundName:'E3'},
-  {name:'F4', step:6,  soundName:'F3'},
-  {name:'G4', step:7,  soundName:'G3'},  // open G string (196 Hz)
-  {name:'A4', step:8,  soundName:'A3'},
-  // Above staff — B and high E strings
-  {name:'B4', step:9,  soundName:'B3'},  // open B string (247 Hz)
-  {name:'C5', step:10, soundName:'C4'},
-  {name:'D5', step:11, soundName:'D4'},
-  {name:'E5', step:12, soundName:'E4'},  // open high E (329 Hz)
-  {name:'F5', step:13, soundName:'F4'},
-  {name:'G5', step:14, soundName:'G4'},
+  {name:'E3', step:-7, soundName:'E2'},
+  {name:'F3', step:-6, soundName:'F2'},
+  {name:'G3', step:-5, soundName:'G2'},
+  {name:'A3', step:-4, soundName:'A2'},
+  {name:'B3', step:-3, soundName:'B2'},
+  {name:'C4', step:-2, soundName:'C3'},
+  {name:'D4', step:-1, soundName:'D3'},
+  {name:'E4', step:0,  soundName:'E3'},
+  {name:'F4', step:1,  soundName:'F3'},
+  {name:'G4', step:2,  soundName:'G3'},
+  {name:'A4', step:3,  soundName:'A3'},
+  {name:'B4', step:4,  soundName:'B3'},
+  {name:'C5', step:5,  soundName:'C4'},
+  {name:'D5', step:6,  soundName:'D4'},
+  {name:'E5', step:7,  soundName:'E4'},
+  {name:'F5', step:8,  soundName:'F4'},
+  {name:'G5', step:9,  soundName:'G4'},
 ];
 
-// Subset for Name the Notes — keeps notes on/near the staff (readable)
-// Open strings: A3(written), D4, G4, B4, E5 — all in comfortable reading range
+// Subset for Name the Notes — open strings + nearby notes, all on/near the staff
 const GUITAR_GAME_BASE = [
-  {name:'E3', step:-2, soundName:'E2'},
-  {name:'F3', step:-1, soundName:'F2'},
-  {name:'G3', step:0,  soundName:'G2'},
-  {name:'A3', step:1,  soundName:'A2'},
-  {name:'B3', step:2,  soundName:'B2'},
-  {name:'C4', step:3,  soundName:'C3'},
-  {name:'D4', step:4,  soundName:'D3'},
-  {name:'E4', step:5,  soundName:'E3'},
-  {name:'F4', step:6,  soundName:'F3'},
-  {name:'G4', step:7,  soundName:'G3'},
-  {name:'A4', step:8,  soundName:'A3'},
-  {name:'B4', step:9,  soundName:'B3'},
-  {name:'C5', step:10, soundName:'C4'},
+  {name:'A3', step:-4, soundName:'A2'},
+  {name:'B3', step:-3, soundName:'B2'},
+  {name:'C4', step:-2, soundName:'C3'},
+  {name:'D4', step:-1, soundName:'D3'},
+  {name:'E4', step:0,  soundName:'E3'},
+  {name:'F4', step:1,  soundName:'F3'},
+  {name:'G4', step:2,  soundName:'G3'},
+  {name:'A4', step:3,  soundName:'A3'},
+  {name:'B4', step:4,  soundName:'B3'},
+  {name:'C5', step:5,  soundName:'C4'},
+  {name:'D5', step:6,  soundName:'D4'},
+  {name:'E5', step:7,  soundName:'E4'},
 ];
 
 function applyKey(base, acc) {
@@ -162,15 +165,11 @@ function drawStaff(note, opts = {}) {
   const cy = noteYPos(note.step, topLine, gap);
   const r  = 7;
 
-  // Ledger lines — draw one for each ledger position needed
-  // Below staff: steps -2, -4 etc. (even = line, odd = space between lines)
-  // Above staff: steps 10, 12 etc.
-  // Step 0 = bottom line, step 8 = top line. Ledger lines at -2, -4, 10, 12...
+  // Ledger lines — below staff at steps -2, -4, -6...; above staff at steps 10, 12...
+  // Step 0 = E4 (bottom line), step 8 = F5 (top line) — no ledger needed there.
   const ledgerSteps = [];
   for (let s = -2; s >= note.step; s -= 2) ledgerSteps.push(s);
   for (let s = 10; s <= note.step; s += 2) ledgerSteps.push(s);
-  // Also add ledger for step 0 (below-staff note sits on ledger line)
-  if (note.step === 0) ledgerSteps.push(0);
 
   [...new Set(ledgerSteps)].forEach(s => {
     const ly = noteYPos(s, topLine, gap);
