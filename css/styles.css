@@ -420,3 +420,45 @@ details[open] summary::after { content: '▾'; }
 .lb-board-desc {
   font-size: 12px; color: var(--text3); padding: 2px 0 6px;
 }
+
+/* ── Play Along ───────────────────────────────────────────────────────── */
+#pa-active {
+  flex-direction: column; gap: 12px;
+}
+.pa-staff-wrap {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; overflow: hidden; position: relative;
+  padding: 0.5rem 0;
+}
+.pa-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 4px;
+}
+.pa-title {
+  font-size: 16px; font-weight: 600; color: var(--text);
+}
+.pa-score-wrap {
+  display: flex; align-items: baseline; gap: 4px;
+}
+.pa-score {
+  font-size: 28px; font-weight: 700; color: #185FA5; line-height: 1;
+}
+[data-theme="dark"] .pa-score { color: #378ADD; }
+.pa-score-label {
+  font-size: 11px; color: var(--text3);
+}
+.pa-nashville-btn {
+  font-size: 11px; font-weight: 500; font-family: inherit;
+  padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  border: 0.5px solid var(--border2); background: transparent;
+  color: var(--text3); transition: background 0.15s;
+}
+.pa-nashville-btn:hover { background: var(--surface2); color: var(--text2); }
+.pa-nashville-btn.active {
+  background: var(--primary-light); color: var(--primary-text);
+  border-color: var(--primary);
+}
+.pa-feedback {
+  min-height: 20px; font-size: 14px; font-weight: 500;
+  color: var(--text3); text-align: center;
+}
