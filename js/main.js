@@ -55,12 +55,13 @@ function switchTab(name) {
 }
 
 // ── Game mode ─────────────────────────────────────────────────────────────
-// 'name-the-notes' | 'play-the-notes'
+// 'name-the-notes' | 'play-the-notes' | 'play-along'
 let gameMode = 'name-the-notes';
 
 const GAME_MODE_CONFIG = {
   'name-the-notes': { emoji: '🎼', pregameId: 'pregame-ntn' },
   'play-the-notes': { emoji: '🎸', pregameId: 'pregame-ptn' },
+  'play-along':     { emoji: '🎵', pregameId: 'pregame-pa'  },
 };
 
 function onGameModeChange() {
@@ -71,11 +72,17 @@ function onGameModeChange() {
   // Swap emoji
   document.getElementById('game-mode-emoji').textContent = cfg.emoji;
 
-  // Default to Guitar (8vb) for Play the Notes
-  if (gameMode === 'play-the-notes') {
+  // Default to Guitar (8vb) for pitch-based modes
+  if (gameMode === 'play-the-notes' || gameMode === 'play-along') {
     document.getElementById('clef-select').value = 'guitar';
     clef = 'guitar';
   }
+
+  // Show/hide the standard key/clef/duration selectors
+  const stdSelectors = document.getElementById('pregame-selectors-wrap');
+  const paSelectors  = document.getElementById('pa-pregame-selectors');
+  if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
+  if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
 
   // Swap pregame description
   Object.values(GAME_MODE_CONFIG).forEach(c => {
@@ -83,9 +90,13 @@ function onGameModeChange() {
   });
   document.getElementById(cfg.pregameId).style.display = '';
 
-  // Update URL without page reload
-  const slug = gameMode === 'play-the-notes' ? '/play-the-notes' : '/name-the-notes';
-  history.pushState({ gameMode }, '', slug);
+  // Update URL
+  const slugMap = {
+    'name-the-notes': '/name-the-notes',
+    'play-the-notes': '/play-the-notes',
+    'play-along':     '/play-along',
+  };
+  history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
 
   showPregame();
 }
@@ -148,6 +159,8 @@ Object.defineProperty(window, 'gameMode', { get: () => gameMode });
 function showPregame() {
   document.getElementById('recap-view').classList.remove('show');
   document.getElementById('active-game').style.display = 'none';
+  const paActive = document.getElementById('pa-active');
+  if (paActive) paActive.style.display = 'none';
   document.getElementById('game-ui').style.display = '';
   document.getElementById('pregame-screen').classList.add('show');
   // Show correct pregame description
@@ -156,6 +169,11 @@ function showPregame() {
     document.getElementById(c.pregameId).style.display = 'none';
   });
   document.getElementById(cfg.pregameId).style.display = '';
+  // Show/hide standard vs PA selectors
+  const stdSelectors = document.getElementById('pregame-selectors-wrap');
+  const paSelectors  = document.getElementById('pa-pregame-selectors');
+  if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
+  if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
   loadBest();
 }
 
