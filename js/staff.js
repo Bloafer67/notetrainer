@@ -1,8 +1,9 @@
 // ── staff.js ──────────────────────────────────────────────────────────────
 // Staff drawing, key signatures, note data
-// Step system: step 0 = bottom line (E4 treble / G2 bass / E2 guitar)
-// Each step = half a gap. Steps go negative (below staff) and above 8 (above staff).
-// Guitar 8vb uses the same visual positions as treble but sounds an octave lower.
+// Step system: step 0 = bottom line (E4 treble / G2 bass)
+// Guitar 8vb: written in treble range (step 0 = E4 written) but sounds an octave lower.
+// Written E4 → sounds E3, written A4 → sounds A3, etc.
+// This matches standard guitar notation (treble clef with "8" underneath).
 
 const KEY_SIGS = [
   { label:'C major', short:'C',  acc:{} },
@@ -34,37 +35,68 @@ const BASS_BASE = [
   {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
 ];
 
-// Guitar 8vb: full 6-string standard tuning range
-// Visual positions same as treble; sounds an octave lower (shown by the "8" under clef)
-// Low E2 (step -2, ledger below) through High E4 (step 14, ledger above)
-// We use a subset for Name the Notes, but PTN exposes the full range.
+// Guitar 8vb: written in treble clef, sounds an octave lower.
+// "written" names are what appears on staff (treble positions).
+// "sound" names (one octave lower) are used for pitch detection via NOTE_FREQS.
+// Open strings written: E5(hi), B4, G4, D4, A3, E3(lo) — on/near treble staff.
+// Full playable range for PTN: E3 (low E open) through E5 (high E open).
 const GUITAR_BASE = [
-  // Below staff (ledger lines needed)
-  {name:'E2',step:-2},{name:'F2',step:-1},
-  // On staff
-  {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
-  {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
-  // Above staff (ledger lines needed)
-  {name:'B3',step:9},{name:'C4',step:10},{name:'D4',step:11},
-  {name:'E4',step:12},{name:'F4',step:13},{name:'G4',step:14},
+  // Below staff — low E and A strings open/low frets
+  {name:'E3', step:-2, soundName:'E2'},  // low E open (82 Hz)
+  {name:'F3', step:-1, soundName:'F2'},
+  // On staff — G string area
+  {name:'G3', step:0,  soundName:'G2'},  // open G or low frets
+  {name:'A3', step:1,  soundName:'A2'},  // open A string (110 Hz)
+  {name:'B3', step:2,  soundName:'B2'},
+  {name:'C4', step:3,  soundName:'C3'},
+  {name:'D4', step:4,  soundName:'D3'},  // open D string (146 Hz)
+  {name:'E4', step:5,  soundName:'E3'},
+  {name:'F4', step:6,  soundName:'F3'},
+  {name:'G4', step:7,  soundName:'G3'},  // open G string (196 Hz)
+  {name:'A4', step:8,  soundName:'A3'},
+  // Above staff — B and high E strings
+  {name:'B4', step:9,  soundName:'B3'},  // open B string (247 Hz)
+  {name:'C5', step:10, soundName:'C4'},
+  {name:'D5', step:11, soundName:'D4'},
+  {name:'E5', step:12, soundName:'E4'},  // open high E (329 Hz)
+  {name:'F5', step:13, soundName:'F4'},
+  {name:'G5', step:14, soundName:'G4'},
 ];
 
-// Subset used by Name the Notes (keeps it on/near the staff — manageable for reading)
+// Subset for Name the Notes — keeps notes on/near the staff (readable)
+// Open strings: A3(written), D4, G4, B4, E5 — all in comfortable reading range
 const GUITAR_GAME_BASE = [
-  {name:'E2',step:-2},{name:'F2',step:-1},
-  {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
-  {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
-  {name:'B3',step:9},{name:'C4',step:10},
+  {name:'E3', step:-2, soundName:'E2'},
+  {name:'F3', step:-1, soundName:'F2'},
+  {name:'G3', step:0,  soundName:'G2'},
+  {name:'A3', step:1,  soundName:'A2'},
+  {name:'B3', step:2,  soundName:'B2'},
+  {name:'C4', step:3,  soundName:'C3'},
+  {name:'D4', step:4,  soundName:'D3'},
+  {name:'E4', step:5,  soundName:'E3'},
+  {name:'F4', step:6,  soundName:'F3'},
+  {name:'G4', step:7,  soundName:'G3'},
+  {name:'A4', step:8,  soundName:'A3'},
+  {name:'B4', step:9,  soundName:'B3'},
+  {name:'C5', step:10, soundName:'C4'},
 ];
 
 function applyKey(base, acc) {
-  return base.map(n => ({
-    name: n.name,
-    step: n.step,
-    actualName: acc[n.name[0]]
-      ? n.name[0] + acc[n.name[0]] + n.name.slice(1)
-      : n.name,
-  }));
+  return base.map(n => {
+    // For guitar 8vb: written name (n.name) is on treble staff,
+    // soundName is one octave lower (actual pitch for detection).
+    // actualName = the sounding note name with key sig applied.
+    const baseSoundName = n.soundName || n.name; // fall back to name for treble/bass
+    const letter = baseSoundName[0];
+    const actualName = acc[letter]
+      ? letter + acc[letter] + baseSoundName.slice(1)
+      : baseSoundName;
+    return {
+      name: n.name,        // written name shown on buttons and staff label
+      step: n.step,
+      actualName,          // sounding name used for NOTE_FREQS lookup
+    };
+  });
 }
 
 // Convert staff step → SVG y coordinate
