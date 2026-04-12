@@ -3,8 +3,8 @@
 // Features: full guitar range, arrows for out-of-range pitch,
 //           tuner inset, ding on hit, note name label, exit/restart
 
-const HIT_THRESHOLD_CENTS = 50;
-const HIT_HOLD_MS         = 300;
+const HIT_THRESHOLD_CENTS = 80;  // more forgiving — was 50
+const HIT_HOLD_MS         = 280;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let ptn_active    = false;
