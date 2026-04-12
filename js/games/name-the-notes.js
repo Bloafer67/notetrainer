@@ -99,6 +99,10 @@ function startGame() {
     startPlayTheNotes();
     return;
   }
+  if (window.gameMode === 'play-along') {
+    startPlayAlong();
+    return;
+  }
   startNameTheNotes();
 }
 
