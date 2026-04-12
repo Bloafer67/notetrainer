@@ -201,14 +201,10 @@
   <!-- LEADERBOARD TAB -->
   <div class="tab-panel" id="tab-leaderboard">
     <div class="lb-header">
-      <h2>Leaderboard</h2>
+      <select class="lb-board-select" id="lb-board-select" onchange="onLbBoardChange()"></select>
       <button class="lb-clear" onclick="fetchLeaderboard()">Refresh</button>
     </div>
-    <div class="lb-game-tabs" id="lb-game-tabs"></div>
-    <div class="lb-filters" id="lb-filters"></div>
-    <div class="lb-board-desc" id="lb-board-desc"></div>
     <div class="lb-list" id="lb-list"></div>
-    <div class="lb-pagination" id="lb-pagination"></div>
   </div>
 </div>
 
