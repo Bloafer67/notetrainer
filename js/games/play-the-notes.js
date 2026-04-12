@@ -58,8 +58,8 @@ async function startPlayTheNotes() {
   document.getElementById('choices').style.display = 'none';
   document.getElementById('feedback').textContent  = '';
 
-  // Show tuner inset
-  showTuner(true);
+  // Tuner hidden — pitch feedback shown via line color instead
+  showTuner(false);
 
   setTimerIcon('pause');
   loadBest();
@@ -85,18 +85,17 @@ function ptnNextQuestion() {
   ptn_smoothHz  = null;
   ptn_centsHist = [];
   document.getElementById('feedback').textContent = '';
-  const notes = noteSet();
+  const notes = ptnNoteSet();
   current = notes[Math.floor(Math.random() * notes.length)];
   drawStaff(current, { showLabel: true }); // show note name label
-  updateTuner(0, false);
   removePitchLine();
 }
 
 // ── Note set for PTN ──────────────────────────────────────────────────────
-// Override noteSet() for guitar to use the full range
+// Guitar uses GUITAR_GAME_BASE (open-string range, manageable on staff)
 function ptnNoteSet() {
   const base = clef === 'guitar'
-    ? GUITAR_BASE   // full guitar range for PTN
+    ? GUITAR_GAME_BASE   // open-string range: E2–C4
     : clef === 'bass'
     ? BASS_BASE
     : TREBLE_BASE;
@@ -116,12 +115,18 @@ function onPitchFrame(hz) {
     ptn_smoothHz = null;
   }
 
-  // Update pitch line (with arrow if out of range)
-  updatePitchLineOrArrow(ptn_smoothHz);
+  // Update pitch line (with arrow if out of range) — color by proximity
+  if (ptn_smoothHz && current) {
+    const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
+    const cents = targetHz ? Math.abs(1200 * Math.log2(ptn_smoothHz / targetHz)) : 999;
+    const inRange = cents <= HIT_THRESHOLD_CENTS;
+    updatePitchLineOrArrow(ptn_smoothHz, inRange ? '#1D9E75' : '#185FA5');
+  } else {
+    updatePitchLineOrArrow(ptn_smoothHz, '#185FA5');
+  }
 
   if (!hz || !current) {
     if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
-    updateTuner(0, false);
     return;
   }
 
@@ -129,7 +134,6 @@ function onPitchFrame(hz) {
   if (!targetHz) return;
 
   const cents = 1200 * Math.log2(hz / targetHz);
-  updateTuner(cents, true);
 
   if (Math.abs(cents) <= HIT_THRESHOLD_CENTS) {
     if (!ptn_hitTimer) {
@@ -163,7 +167,6 @@ function onNoteHit() {
 
   playDing();
   flashPitchLineGreen();
-  updateTuner(0, false);
   setTimeout(() => { if (ptn_active && gameActive && !paused) ptnNextQuestion(); }, 400);
 }
 
@@ -190,7 +193,8 @@ const STAFF_TOP_LINE = 35, STAFF_GAP = 12;
 const STAFF_Y_MIN = noteYPos(8, STAFF_TOP_LINE, STAFF_GAP) - STAFF_GAP * 3; // well above
 const STAFF_Y_MAX = noteYPos(0, STAFF_TOP_LINE, STAFF_GAP) + STAFF_GAP * 3; // well below
 
-function updatePitchLineOrArrow(hz) {
+function updatePitchLineOrArrow(hz, color) {
+  const lineColor = color || '#185FA5';
   const svg = document.getElementById('staff-svg');
   if (!svg) return;
 
@@ -210,17 +214,17 @@ function updatePitchLineOrArrow(hz) {
 
   if (rawY < margin) {
     // Too high — draw upward arrow at top
-    drawArrow(svg, ns, 'up');
+    drawArrow(svg, ns, 'up', lineColor);
   } else if (rawY > svgHeight - margin) {
     // Too low — draw downward arrow at bottom
-    drawArrow(svg, ns, 'down');
+    drawArrow(svg, ns, 'down', lineColor);
   } else {
     // In range — draw the line
     const line = document.createElementNS(ns, 'line');
     line.setAttribute('id', 'pitch-line');
     line.setAttribute('x1', '40'); line.setAttribute('x2', '320');
     line.setAttribute('y1', rawY); line.setAttribute('y2', rawY);
-    line.setAttribute('stroke', '#185FA5');
+    line.setAttribute('stroke', lineColor);
     line.setAttribute('stroke-width', '2.5');
     line.setAttribute('stroke-linecap', 'round');
     line.setAttribute('opacity', '0.9');
@@ -228,10 +232,11 @@ function updatePitchLineOrArrow(hz) {
   }
 }
 
-function drawArrow(svg, ns, direction) {
+function drawArrow(svg, ns, direction, color) {
+  const arrowColor = color || '#185FA5';
   const arrow = document.createElementNS(ns, 'polygon');
   arrow.setAttribute('id', 'pitch-arrow');
-  arrow.setAttribute('fill', '#185FA5');
+  arrow.setAttribute('fill', arrowColor);
   arrow.setAttribute('opacity', '0.85');
   const cx = 180, size = 10;
   if (direction === 'up') {
