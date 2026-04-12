@@ -209,7 +209,7 @@ function updatePitchLineOrArrow(hz, color) {
   if (rawY === null) return;
 
   const ns = 'http://www.w3.org/2000/svg';
-  const svgHeight = 120; // matches viewBox
+  const svgHeight = 130; // matches viewBox "0 0 340 130"
   const margin = 8;
 
   if (rawY < margin) {
@@ -244,7 +244,7 @@ function drawArrow(svg, ns, direction, color) {
     arrow.setAttribute('points', `${cx},6 ${cx-size},18 ${cx+size},18`);
   } else {
     // Triangle pointing down at bottom of SVG
-    arrow.setAttribute('points', `${cx},114 ${cx-size},102 ${cx+size},102`);
+    arrow.setAttribute('points', `${cx},124 ${cx-size},112 ${cx+size},112`);
   }
   svg.appendChild(arrow);
 }
