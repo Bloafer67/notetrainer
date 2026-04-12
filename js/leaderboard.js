@@ -24,7 +24,9 @@ let lbSelectedKey  = null; // currently viewed board key
 
 // ── Board key helpers ─────────────────────────────────────────────────────
 function boardKey(e) {
-  return [e.game||'name-the-notes', e.clef||'Treble', e.key||'C major', e.duration||60].join('|');
+  // Handle both 'duration' (new) and 'Duration' (old capitalised column name)
+  const dur = e.duration ?? e.Duration ?? 60;
+  return [e.game||'name-the-notes', e.clef||'Treble', e.key||'C major', dur].join('|');
 }
 
 function currentBoardKey() {
@@ -53,6 +55,7 @@ async function saveToLeaderboard() {
         clef: clefLabel, key: KEY_SIGS[keyIndex].label,
         game: window.gameMode || 'name-the-notes',
         duration: gameDuration,
+        Duration: gameDuration, // backwards compat with old capitalised column
       }),
     });
     lbHighlightId = result?.[0]?.id || null;
