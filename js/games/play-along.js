@@ -86,6 +86,14 @@ async function startPlayAlong() {
   document.getElementById('recap-view').classList.remove('show');
   document.getElementById('game-ui').style.display         = '';
   document.getElementById('pa-score-display').textContent  = '0';
+  const titleEl = document.getElementById('pa-title');
+  if (titleEl) titleEl.textContent = pa_song.meta.title;
+
+  // Reset completion overlay
+  const complete = document.getElementById('pa-complete');
+  const controls = document.getElementById('pa-controls-row');
+  if (complete) complete.style.display = 'none';
+  if (controls) controls.style.display = '';
 
   pa_render();
   pa_startScrollAnim();
@@ -179,12 +187,22 @@ function pa_advance() {
 function pa_onSongComplete() {
   pa_active = false;
   stopPitchDetection();
-  // Show a simple completion state
-  const fb = document.getElementById('pa-feedback');
-  if (fb) {
-    fb.textContent = '🎵 Song complete! Score: ' + pa_score;
-    fb.style.color = 'var(--primary)';
-  }
+  if (pa_animRAF) { cancelAnimationFrame(pa_animRAF); pa_animRAF = null; }
+  const micEl = document.getElementById('mic-status');
+  if (micEl) micEl.style.display = 'none';
+
+  // Show completion overlay, hide controls and feedback
+  const complete = document.getElementById('pa-complete');
+  const controls = document.getElementById('pa-controls-row');
+  const feedback = document.getElementById('pa-feedback');
+  const scoreNum = document.getElementById('pa-complete-score-num');
+  if (scoreNum) scoreNum.textContent = pa_score;
+  if (complete) complete.style.display = 'flex';
+  if (controls) controls.style.display = 'none';
+  if (feedback) feedback.textContent = '';
+
+  // Confetti!
+  setTimeout(launchConfetti, 100);
 }
 
 // ── Scroll animation ──────────────────────────────────────────────────────
@@ -442,19 +460,41 @@ function pa_stepToY(step) {
 }
 
 // Hz → step (for pitch line position on treble staff)
-// For guitar 8vb songs: sounding Hz are one octave below written,
-// but we still want the line to appear at the written visual position.
-// So we double the hz before mapping if guitarOctave is set.
+// Uses linear interpolation between known note/step/Hz entries for accuracy.
+// For guitar 8vb songs: detected Hz is one octave below written, so we double
+// it first to get the written Hz, then map to the visual staff position.
+const PA_HZ_STEP_TABLE = (() => {
+  // Full chromatic table: note name → diatonic step on treble staff
+  // Chromatic notes (sharps/flats) get fractional steps for smooth line movement
+  const noteSteps = {
+    'E3':-7, 'F3':-6, 'F#3':-5.5, 'G3':-5, 'G#3':-4.5,
+    'A3':-4, 'Bb3':-3.5, 'B3':-3,
+    'C4':-2, 'C#4':-1.5, 'D4':-1, 'Eb4':-0.5,
+    'E4':0,  'F4':1,  'F#4':1.5, 'G4':2,  'G#4':2.5,
+    'A4':3,  'Bb4':3.5, 'B4':4,
+    'C5':5,  'C#5':5.5, 'D5':6,  'Eb5':6.5,
+    'E5':7,  'F5':8,  'F#5':8.5, 'G5':9,
+  };
+  return Object.entries(noteSteps)
+    .map(([name, step]) => ({ step, hz: NOTE_FREQS[name] }))
+    .filter(x => x.hz)
+    .sort((a, b) => a.hz - b.hz);
+})();
+
 function pa_hzToStep(hz) {
   if (!hz || hz < 60) return 0;
-  // If guitar 8vb song, shift detected hz up one octave for visual mapping
-  const mappedHz = (pa_song && pa_song.meta.guitarOctave) ? hz * 2 : hz;
-  const LO_HZ = NOTE_FREQS['E3'] || 164.81;  // step -7 (treble)
-  const HI_HZ = NOTE_FREQS['G5'] || 784.00;  // step 14 (treble)
-  const LO_STEP = -7;
-  const HI_STEP = 14;
-  const t = (Math.log2(mappedHz) - Math.log2(LO_HZ)) / (Math.log2(HI_HZ) - Math.log2(LO_HZ));
-  return LO_STEP + (HI_STEP - LO_STEP) * t;
+  // For guitar 8vb: double the detected Hz to get the written (visual) Hz
+  const visualHz = (pa_song && pa_song.meta.guitarOctave) ? hz * 2 : hz;
+  const t = PA_HZ_STEP_TABLE;
+  if (visualHz <= t[0].hz) return t[0].step;
+  if (visualHz >= t[t.length-1].hz) return t[t.length-1].step;
+  for (let i = 0; i < t.length - 1; i++) {
+    if (visualHz >= t[i].hz && visualHz <= t[i+1].hz) {
+      const frac = (visualHz - t[i].hz) / (t[i+1].hz - t[i].hz);
+      return t[i].step + (t[i+1].step - t[i].step) * frac;
+    }
+  }
+  return 0;
 }
 
 // Draw ledger lines for notes outside the staff
