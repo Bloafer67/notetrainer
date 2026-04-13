@@ -235,8 +235,19 @@
 
       <div class="pa-feedback" id="pa-feedback"></div>
 
+      <!-- Song complete overlay — shown when all notes played -->
+      <div class="pa-complete" id="pa-complete" style="display:none;">
+        <div class="pa-complete-emoji">🎵</div>
+        <div class="pa-complete-title">Song Complete!</div>
+        <div class="pa-complete-score"><span id="pa-complete-score-num">0</span> <span class="pa-complete-score-label">notes played</span></div>
+        <div class="pa-complete-buttons">
+          <button class="pregame-play-btn" onclick="startPlayAlong()" style="margin:0;">Play Again</button>
+          <button class="game-exit-btn" onclick="exitPlayAlong()" style="flex:0;padding:12px 20px;">Exit</button>
+        </div>
+      </div>
+
       <!-- Exit -->
-      <div class="game-controls-row">
+      <div class="game-controls-row" id="pa-controls-row">
         <button class="game-exit-btn" onclick="exitPlayAlong()">✕ Exit</button>
         <button class="game-restart-btn" onclick="startPlayAlong()">↺ Restart</button>
       </div>
