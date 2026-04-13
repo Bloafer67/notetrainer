@@ -28,7 +28,8 @@ let pa_animFrom     = 0;      // scroll start value for animation
 let pa_animRAF      = null;   // requestAnimationFrame handle for scroll
 let pa_hitTimer     = null;   // setTimeout for pitch hold
 let pa_smoothHz     = null;   // smoothed pitch
-let pa_hadSilence   = true;   // tracks whether pitch went silent since last hit (for re-attack)
+let pa_hadSilence   = true;   // true after silence detected; required for re-attack on same-pitch notes
+let pa_lastHitPitch = null;   // pitch of the last registered note (for re-attack detection)
 let pa_nashville    = false;  // show Nashville numbers instead of chord names
 let pa_score        = 0;
 let pa_svgNS        = 'http://www.w3.org/2000/svg';
@@ -77,9 +78,10 @@ async function startPlayAlong() {
   pa_noteIndex  = 0;
   pa_scrollX    = 0;
   pa_targetX    = 0;
-  pa_smoothHz   = null;
-  pa_hadSilence = true;
-  pa_score      = 0;
+  pa_smoothHz     = null;
+  pa_hadSilence   = true;
+  pa_lastHitPitch = null;
+  pa_score        = 0;
 
   // Show play-along UI, hide other game elements
   document.getElementById('pregame-screen').classList.remove('show');
@@ -148,35 +150,31 @@ function pa_onPitchFrame(hz) {
 
   if (pa_song.meta.guitarOctave) targetHz = targetHz / 2;
 
-  const cents  = Math.abs(1200 * Math.log2(hz / targetHz));
+  const cents   = Math.abs(1200 * Math.log2(hz / targetHz));
   const inRange = cents <= PA_HIT_CENTS;
   pa_updatePitchLine(pa_smoothHz, inRange ? '#1D9E75' : '#185FA5');
 
-  // Check if next note is same pitch — if so, require silence before registering
-  const nextNote = pa_song.notes[pa_noteIndex + 1];
-  const nextSamePitch = nextNote && nextNote.pitch === target.pitch;
-  const canHit = !nextSamePitch || pa_hadSilence;
-
-  if (inRange && canHit) {
+  if (inRange) {
     if (!pa_hitTimer) {
       pa_hitTimer = setTimeout(() => {
         pa_hitTimer = null;
+        // Re-attack check: if same pitch as last hit, require silence first
+        const cur = pa_song.notes[pa_noteIndex];
+        if (cur && cur.pitch === pa_lastHitPitch && !pa_hadSilence) return;
         pa_onNoteHit();
       }, PA_HIT_HOLD_MS);
     }
   } else {
     if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
   }
-
-  // Once we're playing, we've broken silence
-  if (inRange) pa_hadSilence = false;
 }
 
 // ── Note hit ──────────────────────────────────────────────────────────────
 function pa_onNoteHit() {
   if (!pa_active) return;
+  pa_lastHitPitch = pa_song.notes[pa_noteIndex]?.pitch ?? null;
+  pa_hadSilence   = false; // require silence before re-attack on same pitch
   pa_score++;
-  pa_hadSilence = true; // require re-attack for next note
   document.getElementById('pa-score-display').textContent = pa_score;
   pa_flashNote(pa_noteIndex, '#3B6D11');
   playDing();

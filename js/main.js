@@ -74,6 +74,17 @@ function switchTab(name) {
   if (name === 'leaderboard') fetchLeaderboard();
 }
 
+// ── Page title ────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  'name-the-notes': 'Note Trainer | Name the Notes',
+  'play-the-notes': 'Note Trainer | Play the Notes',
+  'play-along':     'Note Trainer | Play Along',
+};
+
+function setPageTitle(mode) {
+  document.title = PAGE_TITLES[mode] || 'Note Trainer';
+}
+
 // ── Game mode ─────────────────────────────────────────────────────────────
 // 'name-the-notes' | 'play-the-notes' | 'play-along'
 let gameMode = 'name-the-notes';
@@ -118,6 +129,8 @@ function onGameModeChange() {
   };
   history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
 
+  setPageTitle(gameMode);
+  switchTab('game');
   showPregame();
 }
 
@@ -225,9 +238,11 @@ function initApp() {
       document.getElementById('clef-select').value = 'guitar';
       clef = 'guitar';
     }
+    setPageTitle(mode);
     showPregame();
   });
 
+  setPageTitle(gameMode);
   loadBest();
   setTimerIcon('play');
   setTimerDisplay(null);
