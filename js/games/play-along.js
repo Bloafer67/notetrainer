@@ -28,6 +28,7 @@ let pa_animFrom     = 0;      // scroll start value for animation
 let pa_animRAF      = null;   // requestAnimationFrame handle for scroll
 let pa_hitTimer     = null;   // setTimeout for pitch hold
 let pa_smoothHz     = null;   // smoothed pitch
+let pa_hadSilence   = true;   // tracks whether pitch went silent since last hit (for re-attack)
 let pa_nashville    = false;  // show Nashville numbers instead of chord names
 let pa_score        = 0;
 let pa_svgNS        = 'http://www.w3.org/2000/svg';
@@ -77,6 +78,7 @@ async function startPlayAlong() {
   pa_scrollX    = 0;
   pa_targetX    = 0;
   pa_smoothHz   = null;
+  pa_hadSilence = true;
   pa_score      = 0;
 
   // Show play-along UI, hide other game elements
@@ -97,6 +99,8 @@ async function startPlayAlong() {
 
   pa_render();
   pa_startScrollAnim();
+  pa_updateProgressBar();
+  pa_updateNoteNameDisplay();
 }
 
 // ── Stop ──────────────────────────────────────────────────────────────────
@@ -125,26 +129,35 @@ function pa_onPitchFrame(hz) {
     pa_smoothHz = hz || null;
   }
 
-  if (!hz || pa_noteIndex >= pa_song.notes.length) {
-    pa_updatePitchLine(pa_smoothHz, '#185FA5');
+  // Track silence — required for re-attack detection on consecutive same-pitch notes
+  if (!hz) {
+    pa_hadSilence = true;
+    pa_updatePitchLine(null, '#185FA5');
     if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
     return;
   }
 
-  const target    = pa_song.notes[pa_noteIndex];
-  let targetHz    = NOTE_FREQS[target.pitch];
-  if (!targetHz) { pa_advance(); return; } // rest or unknown — skip
+  if (pa_noteIndex >= pa_song.notes.length) {
+    pa_updatePitchLine(pa_smoothHz, '#185FA5');
+    return;
+  }
 
-  // Guitar 8vb songs: detect one octave lower than written
+  const target   = pa_song.notes[pa_noteIndex];
+  let targetHz   = NOTE_FREQS[target.pitch];
+  if (!targetHz) { pa_advance(); return; } // rest — skip
+
   if (pa_song.meta.guitarOctave) targetHz = targetHz / 2;
 
-  const cents = Math.abs(1200 * Math.log2(hz / targetHz));
-
-  // Color line green if in range, blue otherwise
+  const cents  = Math.abs(1200 * Math.log2(hz / targetHz));
   const inRange = cents <= PA_HIT_CENTS;
   pa_updatePitchLine(pa_smoothHz, inRange ? '#1D9E75' : '#185FA5');
 
-  if (inRange) {
+  // Check if next note is same pitch — if so, require silence before registering
+  const nextNote = pa_song.notes[pa_noteIndex + 1];
+  const nextSamePitch = nextNote && nextNote.pitch === target.pitch;
+  const canHit = !nextSamePitch || pa_hadSilence;
+
+  if (inRange && canHit) {
     if (!pa_hitTimer) {
       pa_hitTimer = setTimeout(() => {
         pa_hitTimer = null;
@@ -154,21 +167,19 @@ function pa_onPitchFrame(hz) {
   } else {
     if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
   }
+
+  // Once we're playing, we've broken silence
+  if (inRange) pa_hadSilence = false;
 }
 
 // ── Note hit ──────────────────────────────────────────────────────────────
 function pa_onNoteHit() {
   if (!pa_active) return;
   pa_score++;
+  pa_hadSilence = true; // require re-attack for next note
   document.getElementById('pa-score-display').textContent = pa_score;
-
-  // Flash the current note blue/green
   pa_flashNote(pa_noteIndex, '#3B6D11');
-
-  // Ding
   playDing();
-
-  // Brief pause then advance
   setTimeout(() => { if (pa_active) pa_advance(); }, 180);
 }
 
@@ -178,9 +189,15 @@ function pa_advance() {
     pa_onSongComplete();
     return;
   }
-  // Scroll to bring next note to playhead
+  // Skip rests automatically
+  while (pa_noteIndex < pa_song.notes.length && !pa_song.notes[pa_noteIndex].pitch) {
+    pa_noteIndex++;
+  }
+  if (pa_noteIndex >= pa_song.notes.length) { pa_onSongComplete(); return; }
+
   pa_scrollToNote(pa_noteIndex);
-  // Re-render to update highlight
+  pa_updateProgressBar();
+  pa_updateNoteNameDisplay();
   pa_render();
 }
 
@@ -333,8 +350,8 @@ function pa_render() {
   }
 
   // ── Notes & Rests ────────────────────────────────────────────────────────
-  // Pre-compute beam groups: consecutive eighths within same measure get beamed
-  const beamGroups = []; // array of arrays of indices
+  // Pre-compute beam groups: consecutive pitched eighths get beamed
+  const beamGroups = [];
   let beamBuf = [];
   pa_song.notes.forEach((note, idx) => {
     if (note.dur === 'e' && note.pitch) {
@@ -346,158 +363,153 @@ function pa_render() {
   });
   if (beamBuf.length > 1) beamGroups.push([...beamBuf]);
   const beamedSet = new Set(beamGroups.flat());
-  // Map each beamed note to its group
-  const beamGroupOf = {};
-  beamGroups.forEach(grp => grp.forEach(i => beamGroupOf[i] = grp));
+
+  // Helper: state color for a note index
+  const noteColor = (idx) => {
+    if (idx < pa_noteIndex)   return doneCol;
+    if (idx === pa_noteIndex) return hitCol;
+    return noteCol;
+  };
 
   // Draw beams first (behind noteheads)
   beamGroups.forEach(grp => {
-    // Get X and stemY for first and last note in group
     const first = pa_song.notes[grp[0]];
-    const last  = pa_song.notes[grp[grp.length-1]];
+    const last  = pa_song.notes[grp[grp.length - 1]];
     const fx = pa_noteToX(first) - pa_scrollX;
     const lx = pa_noteToX(last)  - pa_scrollX;
-    if (fx > visRight && lx < visLeft) return; // fully off screen
+    if (lx < visLeft || fx > visRight) return; // off screen
+
+    // Beam direction: use average step of group
+    const avgStep = grp.reduce((s, i) => s + pa_pitchToStep(pa_song.notes[i].pitch), 0) / grp.length;
+    const stemUp = avgStep < 4;
+    const stemLen = 30;
+
+    // Beam color: first unplayed note's color
+    const firstUnplayed = grp.find(i => i >= pa_noteIndex);
+    const bCol = firstUnplayed !== undefined ? noteColor(firstUnplayed) : doneCol;
+
     const fStep = pa_pitchToStep(first.pitch);
     const lStep = pa_pitchToStep(last.pitch);
-    const stemUp = ((fStep + lStep) / 2) < 4;
-    const stemLen = 28;
-    const fy = pa_stepToY(fStep) + (stemUp ? -stemLen : stemLen);
-    const ly = pa_stepToY(lStep) + (stemUp ? -stemLen : stemLen);
-    const bw = 4; // beam thickness
-    // Draw beam rectangle connecting first to last stem tops
+    const fStemX = fx + (stemUp ? PA_NOTE_R - 1 : -(PA_NOTE_R - 1));
+    const lStemX = lx + (stemUp ? PA_NOTE_R - 1 : -(PA_NOTE_R - 1));
+    const fBeamY = pa_stepToY(fStep) + (stemUp ? -stemLen : stemLen);
+    const lBeamY = pa_stepToY(lStep) + (stemUp ? -stemLen : stemLen);
+
     svg.appendChild(el('line', {
-      x1: fx + (stemUp ? PA_NOTE_R-1 : -PA_NOTE_R+1),
-      x2: lx + (stemUp ? PA_NOTE_R-1 : -PA_NOTE_R+1),
-      y1: fy, y2: ly,
-      stroke: noteCol, 'stroke-width': String(bw), 'stroke-linecap': 'square',
+      x1:fStemX, y1:fBeamY, x2:lStemX, y2:lBeamY,
+      stroke:bCol, 'stroke-width':'4', 'stroke-linecap':'square',
     }));
   });
 
-  // Draw each note/rest
+  // Draw each note and rest
   pa_song.notes.forEach((note, idx) => {
     const nx = pa_noteToX(note) - pa_scrollX;
     if (nx < visLeft || nx > visRight) return;
 
-    // State colour
-    let col = noteCol;
-    if (idx < pa_noteIndex)       col = doneCol;
-    else if (idx === pa_noteIndex) col = hitCol;
+    const col = noteColor(idx);
 
     // ── REST ──────────────────────────────────────────────────────────────
     if (!note.pitch) {
-      const midY = PA_TOP_LINE + 2 * PA_GAP; // middle of staff
+      const line2Y = PA_TOP_LINE + PA_GAP;         // 2nd line from top
+      const line3Y = PA_TOP_LINE + 2 * PA_GAP;     // middle line
+
       if (note.dur === 'w') {
-        // Whole rest — filled rect hanging from 2nd line from top
-        const ry = PA_TOP_LINE + PA_GAP - 5;
-        svg.appendChild(el('rect', { x:nx-10, y:ry, width:20, height:7, fill:col, rx:'1' }));
+        // Whole rest: filled rect hanging below 2nd line
+        svg.appendChild(el('rect', { x:nx-9, y:line2Y, width:18, height:6, fill:col }));
       } else if (note.dur === 'h') {
-        // Half rest — filled rect sitting on 3rd line from top
-        const ry = PA_TOP_LINE + 2*PA_GAP - 1;
-        svg.appendChild(el('rect', { x:nx-10, y:ry, width:20, height:7, fill:col, rx:'1' }));
+        // Half rest: filled rect sitting on 3rd line
+        svg.appendChild(el('rect', { x:nx-9, y:line3Y-6, width:18, height:6, fill:col }));
       } else if (note.dur === 'q') {
-        // Quarter rest — stylised zigzag using path
-        const rx = nx, ry = midY - 10;
+        // Quarter rest: zigzag
+        const ry = line3Y - 9;
         svg.appendChild(el('path', {
-          d: `M${rx},${ry} l5,5 l-8,5 l8,5 l-5,5`,
-          stroke: col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
+          d:`M${nx+2},${ry} l4,5 l-7,5 l7,5 l-4,5`,
+          stroke:col, 'stroke-width':'1.8', fill:'none', 'stroke-linecap':'round',
         }));
       } else if (note.dur === 'e') {
-        // Eighth rest — single flag curl
-        svg.appendChild(el('text', {
-          x: nx, y: midY + 8,
-          'font-size':'18', fill: col, 'text-anchor':'middle',
-          'font-family':'serif',
-        }, '𝄾'));
+        // Eighth rest: simple curved stroke
+        svg.appendChild(el('path', {
+          d:`M${nx-2},${line3Y-8} C${nx+8},${line3Y-6} ${nx+8},${line3Y+2} ${nx+2},${line3Y+8}`,
+          stroke:col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
+        }));
+        svg.appendChild(el('circle', { cx:nx+2, cy:line3Y+8, r:'2', fill:col }));
       }
       return;
     }
 
     // ── PITCHED NOTE ──────────────────────────────────────────────────────
-    const step = pa_pitchToStep(note.pitch);
-    const cy   = pa_stepToY(step);
-    const r    = PA_NOTE_R;
+    const step    = pa_pitchToStep(note.pitch);
+    const cy      = pa_stepToY(step);
+    const r       = PA_NOTE_R;
     const isWhole = note.dur === 'w';
     const isHalf  = note.dur === 'h' || note.dur === 'h.';
-    const isOpen  = isWhole || isHalf; // open notehead
+    const stemUp  = step < 4;
 
     // Ledger lines
     pa_drawLedger(svg, el, nx, cy, r, lineCol, step);
 
-    // Note head — open for whole/half, filled for quarter/eighth
-    if (isOpen) {
-      // Open notehead: outer ellipse filled, inner ellipse cut out
+    // Notehead
+    if (isWhole || isHalf) {
+      // Open notehead: stroke only, no fill
       svg.appendChild(el('ellipse', {
-        cx:nx, cy, rx:r, ry:Math.round(r*0.72),
-        fill: col, transform:`rotate(-15,${nx},${cy})`,
-      }));
-      // Inner cutout (white/surface hole)
-      const innerCol = isDark ? '#2c2c2a' : '#ffffff';
-      svg.appendChild(el('ellipse', {
-        cx:nx + 1, cy: cy - 1,
-        rx: Math.round(r*0.5), ry: Math.round(r*0.35),
-        fill: innerCol, transform:`rotate(-15,${nx},${cy})`,
+        cx:nx, cy, rx:r, ry:Math.round(r * 0.68),
+        fill:'none', stroke:col, 'stroke-width':'2',
+        transform:`rotate(-15,${nx},${cy})`,
       }));
     } else {
       // Filled notehead
       svg.appendChild(el('ellipse', {
-        cx:nx, cy, rx:r, ry:Math.round(r*0.72),
-        fill: col, transform:`rotate(-15,${nx},${cy})`,
+        cx:nx, cy, rx:r, ry:Math.round(r * 0.72),
+        fill:col,
+        transform:`rotate(-15,${nx},${cy})`,
       }));
     }
 
-    // Stem (whole notes have no stem)
-    const stemUp = step < 4;
-    const stemLen = 28;
+    // Stem (not for whole notes)
     if (!isWhole) {
-      const stemX = stemUp ? nx + r - 1 : nx - r + 1;
-      const stemY2 = stemUp ? cy - stemLen : cy + stemLen;
+      const stemLen = 28;
+      const stemX   = stemUp ? nx + r - 1 : nx - r + 1;
+      const stemY2  = stemUp ? cy - stemLen : cy + stemLen;
       svg.appendChild(el('line', {
-        x1:stemX, x2:stemX, y1:cy, y2:stemY2,
-        stroke:col, 'stroke-width':'1.5',
+        x1:stemX, y1:cy, x2:stemX, y2:stemY2,
+        stroke:col, 'stroke-width':'1.6',
       }));
 
-      // Flag for unbeamed eighth notes
+      // Flag for solo (unbeamed) eighth note
       if (note.dur === 'e' && !beamedSet.has(idx)) {
-        const sx = stemUp ? nx + r - 1 : nx - r + 1;
-        const sy = stemUp ? cy - stemLen : cy + stemLen;
-        // Curved flag
-        if (stemUp) {
-          svg.appendChild(el('path', {
-            d:`M${sx},${sy} C${sx+14},${sy+4} ${sx+14},${sy+12} ${sx},${sy+18}`,
-            stroke:col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
-          }));
-        } else {
-          svg.appendChild(el('path', {
-            d:`M${sx},${sy} C${sx+14},${sy-4} ${sx+14},${sy-12} ${sx},${sy-18}`,
-            stroke:col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
-          }));
-        }
+        const sx = stemX, sy = stemY2;
+        svg.appendChild(el('path', {
+          d: stemUp
+            ? `M${sx},${sy} C${sx+13},${sy+3} ${sx+13},${sy+11} ${sx+2},${sy+17}`
+            : `M${sx},${sy} C${sx+13},${sy-3} ${sx+13},${sy-11} ${sx+2},${sy-17}`,
+          stroke:col, 'stroke-width':'1.8', fill:'none', 'stroke-linecap':'round',
+        }));
       }
     }
 
-    // Augmentation dot for dotted notes
+    // Augmentation dot
     if (note.dur === 'h.' || note.dur === 'q.') {
-      const dotY = (step % 2 === 0) ? cy - 3 : cy; // nudge dot up if on line
-      svg.appendChild(el('circle', { cx:nx+r+5, cy:dotY, r:'2.5', fill:col }));
-    }
-
-    // Note name label — to the RIGHT of notehead for current target, small + subtle
-    if (idx === pa_noteIndex) {
-      const labelX = nx + r + 10;
-      const labelY = cy + 4;
-      svg.appendChild(el('text', {
-        x:labelX, y:labelY,
-        'font-size':'9', 'font-weight':'700',
-        fill:hitCol, 'text-anchor':'start',
-        'font-family':'-apple-system,BlinkMacSystemFont,sans-serif',
-        opacity:'0.85',
-      }, note.pitch));
+      const dotY = (Math.round(step) % 2 === 0) ? cy - 3 : cy;
+      svg.appendChild(el('circle', { cx:nx + r + 5, cy:dotY, r:'2.5', fill:col }));
     }
   });
 
-  // Pitch line
   pa_renderPitchLine(svg, el, W);
+}
+
+function pa_updateProgressBar() {
+  const bar = document.getElementById('pa-progress-fill');
+  if (!bar || !pa_song) return;
+  const total = pa_song.notes.filter(n => n.pitch).length;
+  const pct = total > 0 ? Math.round((pa_score / total) * 100) : 0;
+  bar.style.width = pct + '%';
+}
+
+function pa_updateNoteNameDisplay() {
+  const el = document.getElementById('pa-note-name');
+  if (!el || !pa_song) return;
+  const note = pa_song.notes[pa_noteIndex];
+  el.textContent = (note && note.pitch) ? note.pitch : '';
 }
 
 // ── Flash note colour ──────────────────────────────────────────────────────

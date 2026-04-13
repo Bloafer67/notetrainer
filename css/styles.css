@@ -477,3 +477,39 @@ details[open] summary::after { content: '▾'; }
   min-height: 20px; font-size: 14px; font-weight: 500;
   color: var(--text3); text-align: center;
 }
+
+/* Current note name — large below staff */
+.pa-note-name {
+  font-size: 36px; font-weight: 700;
+  color: #185FA5; text-align: center;
+  min-height: 44px; line-height: 1;
+  letter-spacing: -0.5px;
+}
+[data-theme="dark"] .pa-note-name { color: #378ADD; }
+
+/* Song progress bar */
+.pa-progress-bar {
+  width: 100%; height: 6px;
+  background: var(--surface2); border-radius: 999px;
+  overflow: hidden;
+}
+.pa-progress-fill {
+  height: 100%; width: 0%;
+  background: #185FA5; border-radius: 999px;
+  transition: width 0.3s ease;
+}
+[data-theme="dark"] .pa-progress-fill { background: #378ADD; }
+
+/* ── Play Along completion overlay ──────────────────────────────────────── */
+.pa-complete {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 28px 20px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; text-align: center;
+}
+.pa-complete-emoji { font-size: 48px; line-height: 1; }
+.pa-complete-title { font-size: 26px; font-weight: 700; color: var(--text); }
+.pa-complete-score { display: flex; align-items: baseline; gap: 6px; }
+.pa-complete-score-num { font-size: 52px; font-weight: 700; color: var(--primary); line-height: 1; }
+.pa-complete-score-label { font-size: 14px; color: var(--text3); }
+.pa-complete-buttons { display: flex; gap: 10px; width: 100%; margin-top: 8px; align-items: center; }
