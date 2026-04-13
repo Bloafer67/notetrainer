@@ -290,6 +290,19 @@ function pa_render() {
     'font-size':'52', fill:clefCol,
   }, '𝄞'));
 
+  // Time signature 4/4 (fixed, after clef)
+  const tsX = 52;
+  svg.appendChild(el('text', {
+    x:tsX, y: PA_TOP_LINE + PA_GAP*2 + 2,
+    'font-size':'16', 'font-weight':'700', fill:clefCol,
+    'text-anchor':'middle', 'font-family':'serif',
+  }, '4'));
+  svg.appendChild(el('text', {
+    x:tsX, y: PA_TOP_LINE + PA_GAP*4 + 2,
+    'font-size':'16', 'font-weight':'700', fill:clefCol,
+    'text-anchor':'middle', 'font-family':'serif',
+  }, '4'));
+
   // Render notes, bar lines, chords — all offset by pa_scrollX
   const visLeft  = -PA_BEAT_W * 2;  // render a bit off-screen left
   const visRight = W + PA_BEAT_W * 2;
@@ -319,54 +332,166 @@ function pa_render() {
     }, chordText));
   }
 
-  // Notes
+  // ── Notes & Rests ────────────────────────────────────────────────────────
+  // Pre-compute beam groups: consecutive eighths within same measure get beamed
+  const beamGroups = []; // array of arrays of indices
+  let beamBuf = [];
+  pa_song.notes.forEach((note, idx) => {
+    if (note.dur === 'e' && note.pitch) {
+      beamBuf.push(idx);
+    } else {
+      if (beamBuf.length > 1) beamGroups.push([...beamBuf]);
+      beamBuf = [];
+    }
+  });
+  if (beamBuf.length > 1) beamGroups.push([...beamBuf]);
+  const beamedSet = new Set(beamGroups.flat());
+  // Map each beamed note to its group
+  const beamGroupOf = {};
+  beamGroups.forEach(grp => grp.forEach(i => beamGroupOf[i] = grp));
+
+  // Draw beams first (behind noteheads)
+  beamGroups.forEach(grp => {
+    // Get X and stemY for first and last note in group
+    const first = pa_song.notes[grp[0]];
+    const last  = pa_song.notes[grp[grp.length-1]];
+    const fx = pa_noteToX(first) - pa_scrollX;
+    const lx = pa_noteToX(last)  - pa_scrollX;
+    if (fx > visRight && lx < visLeft) return; // fully off screen
+    const fStep = pa_pitchToStep(first.pitch);
+    const lStep = pa_pitchToStep(last.pitch);
+    const stemUp = ((fStep + lStep) / 2) < 4;
+    const stemLen = 28;
+    const fy = pa_stepToY(fStep) + (stemUp ? -stemLen : stemLen);
+    const ly = pa_stepToY(lStep) + (stemUp ? -stemLen : stemLen);
+    const bw = 4; // beam thickness
+    // Draw beam rectangle connecting first to last stem tops
+    svg.appendChild(el('line', {
+      x1: fx + (stemUp ? PA_NOTE_R-1 : -PA_NOTE_R+1),
+      x2: lx + (stemUp ? PA_NOTE_R-1 : -PA_NOTE_R+1),
+      y1: fy, y2: ly,
+      stroke: noteCol, 'stroke-width': String(bw), 'stroke-linecap': 'square',
+    }));
+  });
+
+  // Draw each note/rest
   pa_song.notes.forEach((note, idx) => {
     const nx = pa_noteToX(note) - pa_scrollX;
     if (nx < visLeft || nx > visRight) return;
-    if (!note.pitch) return; // rest — skip for now
 
+    // State colour
+    let col = noteCol;
+    if (idx < pa_noteIndex)       col = doneCol;
+    else if (idx === pa_noteIndex) col = hitCol;
+
+    // ── REST ──────────────────────────────────────────────────────────────
+    if (!note.pitch) {
+      const midY = PA_TOP_LINE + 2 * PA_GAP; // middle of staff
+      if (note.dur === 'w') {
+        // Whole rest — filled rect hanging from 2nd line from top
+        const ry = PA_TOP_LINE + PA_GAP - 5;
+        svg.appendChild(el('rect', { x:nx-10, y:ry, width:20, height:7, fill:col, rx:'1' }));
+      } else if (note.dur === 'h') {
+        // Half rest — filled rect sitting on 3rd line from top
+        const ry = PA_TOP_LINE + 2*PA_GAP - 1;
+        svg.appendChild(el('rect', { x:nx-10, y:ry, width:20, height:7, fill:col, rx:'1' }));
+      } else if (note.dur === 'q') {
+        // Quarter rest — stylised zigzag using path
+        const rx = nx, ry = midY - 10;
+        svg.appendChild(el('path', {
+          d: `M${rx},${ry} l5,5 l-8,5 l8,5 l-5,5`,
+          stroke: col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
+        }));
+      } else if (note.dur === 'e') {
+        // Eighth rest — single flag curl
+        svg.appendChild(el('text', {
+          x: nx, y: midY + 8,
+          'font-size':'18', fill: col, 'text-anchor':'middle',
+          'font-family':'serif',
+        }, '𝄾'));
+      }
+      return;
+    }
+
+    // ── PITCHED NOTE ──────────────────────────────────────────────────────
     const step = pa_pitchToStep(note.pitch);
     const cy   = pa_stepToY(step);
     const r    = PA_NOTE_R;
-
-    // Colour based on state
-    let fill = noteCol;
-    if (idx < pa_noteIndex)        fill = doneCol;   // played — dark green
-    else if (idx === pa_noteIndex)  fill = hitCol;    // current — blue
+    const isWhole = note.dur === 'w';
+    const isHalf  = note.dur === 'h' || note.dur === 'h.';
+    const isOpen  = isWhole || isHalf; // open notehead
 
     // Ledger lines
     pa_drawLedger(svg, el, nx, cy, r, lineCol, step);
 
-    // Note head
-    svg.appendChild(el('ellipse', {
-      cx:nx, cy,
-      rx:r, ry:Math.round(r * 0.72),
-      fill,
-      transform:`rotate(-15,${nx},${cy})`,
-    }));
-
-    // Stem
-    const stemUp = step < 4;
-    const stemX  = stemUp ? nx + r - 1 : nx - r + 1;
-    svg.appendChild(el('line', {
-      x1:stemX, x2:stemX,
-      y1:cy, y2:stemUp ? cy - 30 : cy + 30,
-      stroke:fill, 'stroke-width':'1.5',
-    }));
-
-    // Duration dot for dotted notes (none in this song but good to have)
-    // Duration flag/beam for eighths — simplified: just show flags
-    if (note.dur === 'e' || note.dur === 'q') {
-      // beaming would go here in future
+    // Note head — open for whole/half, filled for quarter/eighth
+    if (isOpen) {
+      // Open notehead: outer ellipse filled, inner ellipse cut out
+      svg.appendChild(el('ellipse', {
+        cx:nx, cy, rx:r, ry:Math.round(r*0.72),
+        fill: col, transform:`rotate(-15,${nx},${cy})`,
+      }));
+      // Inner cutout (white/surface hole)
+      const innerCol = isDark ? '#2c2c2a' : '#ffffff';
+      svg.appendChild(el('ellipse', {
+        cx:nx + 1, cy: cy - 1,
+        rx: Math.round(r*0.5), ry: Math.round(r*0.35),
+        fill: innerCol, transform:`rotate(-15,${nx},${cy})`,
+      }));
+    } else {
+      // Filled notehead
+      svg.appendChild(el('ellipse', {
+        cx:nx, cy, rx:r, ry:Math.round(r*0.72),
+        fill: col, transform:`rotate(-15,${nx},${cy})`,
+      }));
     }
 
-    // Note name label below note for current target
+    // Stem (whole notes have no stem)
+    const stemUp = step < 4;
+    const stemLen = 28;
+    if (!isWhole) {
+      const stemX = stemUp ? nx + r - 1 : nx - r + 1;
+      const stemY2 = stemUp ? cy - stemLen : cy + stemLen;
+      svg.appendChild(el('line', {
+        x1:stemX, x2:stemX, y1:cy, y2:stemY2,
+        stroke:col, 'stroke-width':'1.5',
+      }));
+
+      // Flag for unbeamed eighth notes
+      if (note.dur === 'e' && !beamedSet.has(idx)) {
+        const sx = stemUp ? nx + r - 1 : nx - r + 1;
+        const sy = stemUp ? cy - stemLen : cy + stemLen;
+        // Curved flag
+        if (stemUp) {
+          svg.appendChild(el('path', {
+            d:`M${sx},${sy} C${sx+14},${sy+4} ${sx+14},${sy+12} ${sx},${sy+18}`,
+            stroke:col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
+          }));
+        } else {
+          svg.appendChild(el('path', {
+            d:`M${sx},${sy} C${sx+14},${sy-4} ${sx+14},${sy-12} ${sx},${sy-18}`,
+            stroke:col, 'stroke-width':'2', fill:'none', 'stroke-linecap':'round',
+          }));
+        }
+      }
+    }
+
+    // Augmentation dot for dotted notes
+    if (note.dur === 'h.' || note.dur === 'q.') {
+      const dotY = (step % 2 === 0) ? cy - 3 : cy; // nudge dot up if on line
+      svg.appendChild(el('circle', { cx:nx+r+5, cy:dotY, r:'2.5', fill:col }));
+    }
+
+    // Note name label — to the RIGHT of notehead for current target, small + subtle
     if (idx === pa_noteIndex) {
+      const labelX = nx + r + 10;
+      const labelY = cy + 4;
       svg.appendChild(el('text', {
-        x:nx, y:PA_TOP_LINE + 4*PA_GAP + 24,
-        'font-size':'10', 'font-weight':'600',
-        fill:hitCol, 'text-anchor':'middle',
+        x:labelX, y:labelY,
+        'font-size':'9', 'font-weight':'700',
+        fill:hitCol, 'text-anchor':'start',
         'font-family':'-apple-system,BlinkMacSystemFont,sans-serif',
+        opacity:'0.85',
       }, note.pitch));
     }
   });
@@ -425,14 +550,12 @@ function pa_renderPitchLine(svg, el, W) {
 
 // Convert note to absolute X pixel position (before scroll)
 function pa_noteToX(note) {
-  // Sum beat durations up to this note's position
   const totalBeats = (note.measure - 1) * 4 + (note.beat - 1);
-  return PA_PLAYHEAD_X + 60 + totalBeats * PA_BEAT_W; // 60px offset for clef
+  return PA_PLAYHEAD_X + 70 + totalBeats * PA_BEAT_W; // 70px offset for clef + time sig
 }
 
-// Start X of a measure
 function pa_measureStartX(mNum) {
-  return PA_PLAYHEAD_X + 60 + (mNum - 1) * 4 * PA_BEAT_W;
+  return PA_PLAYHEAD_X + 70 + (mNum - 1) * 4 * PA_BEAT_W;
 }
 
 // Scientific pitch → staff step (0 = E4 treble bottom line)
@@ -497,11 +620,13 @@ function pa_hzToStep(hz) {
   return 0;
 }
 
-// Draw ledger lines for notes outside the staff
+// Draw ledger lines for notes outside the treble staff
+// Staff lines at steps 0,2,4,6,8. Ledger lines needed at -2,-4,... and 10,12,...
 function pa_drawLedger(svg, el, nx, cy, r, lineCol, step) {
-  // Bottom ledger (step 0 = on first line, step -2 = on ledger below)
-  if (step <= -2) {
-    for (let s = -2; s >= step; s -= 2) {
+  const intStep = Math.round(step);
+  // Below staff: steps -2 and below (even steps only = actual lines)
+  if (intStep <= -2) {
+    for (let s = -2; s >= intStep; s -= 2) {
       const ly = pa_stepToY(s);
       svg.appendChild(el('line', {
         x1:nx-r-4, x2:nx+r+4, y1:ly, y2:ly,
@@ -509,17 +634,9 @@ function pa_drawLedger(svg, el, nx, cy, r, lineCol, step) {
       }));
     }
   }
-  // Middle C ledger (step -2 = C4)
-  if (step === -2) {
-    const ly = pa_stepToY(-2);
-    svg.appendChild(el('line', {
-      x1:nx-r-4, x2:nx+r+4, y1:ly, y2:ly,
-      stroke:lineCol, 'stroke-width':'1.5',
-    }));
-  }
-  // Top ledger
-  if (step >= 10) {
-    for (let s = 10; s <= step; s += 2) {
+  // Above staff: steps 10 and above
+  if (intStep >= 10) {
+    for (let s = 10; s <= intStep; s += 2) {
       const ly = pa_stepToY(s);
       svg.appendChild(el('line', {
         x1:nx-r-4, x2:nx+r+4, y1:ly, y2:ly,
