@@ -83,9 +83,8 @@ const SONGS = {
       { pitch:'E4', dur:'q', beats:1,   measure:5, beat:3   },
       { pitch:'E4', dur:'q', beats:1,   measure:5, beat:4   },
 
-      // Measure 6 — Am  "-er___" (tied)
-      { pitch:'E4', dur:'h', beats:2, measure:6, beat:1 },
-      { pitch:'E4', dur:'h', beats:2, measure:6, beat:3 },
+      // Measure 6 — Am  "-er___" (tied whole note)
+      { pitch:'E4', dur:'w', beats:4, measure:6, beat:1 },
 
       // Measure 7 — F  "To the one I love."
       { pitch:'E4', dur:'q', beats:1,   measure:7, beat:1 },
