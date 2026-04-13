@@ -5,7 +5,7 @@
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const PA_HIT_CENTS    = 80;   // cents tolerance for a hit
-const PA_HIT_HOLD_MS  = 250;  // ms to hold pitch before registering
+const PA_HIT_HOLD_MS  = 180;  // ms to hold pitch before registering (shorter = more responsive)
 const PA_EASE_MS      = 320;  // scroll animation duration (ms)
 const PA_EASE_FN      = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
 
