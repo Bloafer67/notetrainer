@@ -191,8 +191,7 @@ function drawStaff(note, opts = {}) {
     const ann = new VF.Annotation(note.name);
     ann.setFont('Arial', 11, 'bold');
     ann.setStyle({ fillStyle: '#185FA5', strokeStyle: '#185FA5' });
-    // Always place label above so it's never clipped below the canvas
-    ann.setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
+    ann.setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
     staveNote.addModifier(ann, 0);
   }
 
