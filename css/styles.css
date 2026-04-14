@@ -139,7 +139,14 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
   background: var(--surface); border: 0.5px solid var(--border);
   border-radius: 12px; padding: 0.875rem 1.25rem; position: relative; overflow: hidden;
 }
-svg#staff-svg { width: 100%; display: block; }
+#staff-container { width: 100%; display: block; position: relative; }
+#staff-container svg { display: block; width: 100%; height: auto; }
+#staff-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+/* VexFlow SVG inherits theme colors via JS context calls; these catch any unstyled paths */
+[data-theme="dark"] #staff-container path,
+[data-theme="dark"] #staff-container rect,
+[data-theme="dark"] #staff-container line { stroke: #e0dfd8; }
+[data-theme="dark"] #staff-container text { fill: #aaa; }
 
 /* ── Pre-game screen ──────────────────────────────────────────────────── */
 #pregame-screen {

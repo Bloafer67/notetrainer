@@ -189,13 +189,9 @@ function playDing() {
 }
 
 // ── Pitch line / arrows ───────────────────────────────────────────────────
-const STAFF_TOP_LINE = 35, STAFF_GAP = 12;
-const STAFF_Y_MIN = noteYPos(8, STAFF_TOP_LINE, STAFF_GAP) - STAFF_GAP * 3; // well above
-const STAFF_Y_MAX = noteYPos(0, STAFF_TOP_LINE, STAFF_GAP) + STAFF_GAP * 3; // well below
-
 function updatePitchLineOrArrow(hz, color) {
   const lineColor = color || '#185FA5';
-  const svg = document.getElementById('staff-svg');
+  const svg = document.getElementById('staff-overlay');
   if (!svg) return;
 
   // Remove existing pitch indicators
@@ -301,28 +297,30 @@ function updateTuner(cents, active) {
 }
 
 // ── Hz → staff Y ──────────────────────────────────────────────────────────
+// Uses VexFlow's reported geometry (window.staffGeometry set in drawStaff)
 function hzToStaffY(hz) {
   if (!hz) return null;
-  const topLine = STAFF_TOP_LINE, gap = STAFF_GAP;
 
-  // Use full guitar range for mapping when in guitar mode
-  const base  = clef === 'guitar' ? GUITAR_BASE : clef === 'bass' ? BASS_BASE : TREBLE_BASE;
-  const notes = applyKey(base, KEY_SIGS[keyIndex].acc);
+  const geo     = window.staffGeometry;
+  const topLine = geo ? geo.topLineY : 18;
+  const gap     = geo ? geo.lineGap  : 10;
+
+  const base   = clef === 'guitar' ? GUITAR_BASE : clef === 'bass' ? BASS_BASE : TREBLE_BASE;
+  const notes  = applyKey(base, KEY_SIGS[keyIndex].acc);
   const loNote = notes[0];
   const hiNote = notes[notes.length - 1];
 
   const loHz = NOTE_FREQS[loNote.actualName] || NOTE_FREQS[loNote.name];
   const hiHz = NOTE_FREQS[hiNote.actualName] || NOTE_FREQS[hiNote.name];
-  if (!loHz || !hiHz) return noteYPos(4, topLine, gap);
+  if (!loHz || !hiHz) return topLine + 4 * gap;
 
   const logHz = Math.log2(hz);
   const logLo = Math.log2(loHz);
   const logHi = Math.log2(hiHz);
 
-  // Don't clamp — let caller decide what to do with out-of-range values
   const t = (logHz - logLo) / (logHi - logLo);
 
-  const yBottom = noteYPos(loNote.step, topLine, gap);
-  const yTop    = noteYPos(hiNote.step, topLine, gap);
+  const yBottom = topLine + 4 * gap - loNote.step * (gap / 2);
+  const yTop    = topLine + 4 * gap - hiNote.step * (gap / 2);
   return yBottom + (yTop - yBottom) * t;
 }

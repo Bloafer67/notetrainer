@@ -107,103 +107,83 @@ function noteYPos(step, topLine, gap) {
   return topLine + 4 * gap - step * (gap / 2);
 }
 
-// ── Draw staff ────────────────────────────────────────────────────────────
+// ── Draw staff (VexFlow) ──────────────────────────────────────────────────
+// Convert note name to VexFlow key string: 'C4' → 'c/4', 'Bb4' → 'bb/4'
+function noteToVFKey(noteName) {
+  const m = noteName.match(/^([A-G])([#b]?)(\d)$/);
+  if (!m) return 'c/4';
+  return m[1].toLowerCase() + m[2] + '/' + m[3];
+}
+
 function drawStaff(note, opts = {}) {
-  const svg = document.getElementById('staff-svg');
-  svg.innerHTML = '';
+  const container = document.getElementById('staff-container');
+  if (!container) return;
+  container.innerHTML = '';
 
-  const topLine = 35, gap = 12; // moved topLine down a bit to give room above staff
-  const ns = 'http://www.w3.org/2000/svg';
+  const VF = Vex.Flow;
+  const W = 340, H = 130;
 
-  const lineCol   = darkMode ? '#666' : '#888';
-  const clefCol   = darkMode ? '#aaa' : '#666';
-  const ledgerCol = darkMode ? '#999' : '#444';
-  const noteCol   = darkMode ? '#e0dfd8' : '#1a1a18';
-  const accCol    = darkMode ? '#aaa' : '#444';
+  const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+  renderer.resize(W, H);
+  const context = renderer.getContext();
 
-  function el(tag, attrs, text) {
-    const e = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-    if (text !== undefined) e.textContent = text;
-    return e;
+  // Make SVG responsive
+  const svgEl = container.querySelector('svg');
+  if (svgEl) {
+    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svgEl.style.width  = '100%';
+    svgEl.style.height = 'auto';
   }
 
-  // Five staff lines
-  for (let i = 0; i < 5; i++) {
-    const y = topLine + i * gap;
-    svg.appendChild(el('line', {x1:40,x2:320,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
-  }
+  const isDark  = darkMode;
+  const lineCol = isDark ? '#666' : '#888';
+  const clefCol = isDark ? '#aaa' : '#666';
+  const noteCol = isDark ? '#e0dfd8' : '#1a1a18';
 
-  // Clef
+  context.setStrokeStyle(lineCol);
+  context.setFillStyle(clefCol);
+
+  const staveX = 10, staveY = 5, staveW = W - 20;
+  const stave = new VF.Stave(staveX, staveY, staveW);
+
   if (clef === 'bass') {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol}, '𝄢'));
+    stave.addClef('bass');
+  } else if (clef === 'guitar') {
+    stave.addClef('treble', 'default', '8vb');
   } else {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol}, '𝄞'));
-    if (clef === 'guitar') {
-      svg.appendChild(el('text', {x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'}, '8'));
-    }
+    stave.addClef('treble');
   }
 
-  // Key signature
-  const acc = KEY_SIGS[keyIndex].acc;
-  const accLetters = Object.keys(acc);
-  if (accLetters.length > 0) {
-    const isSharp  = acc[accLetters[0]] === '#';
-    const clefType = clef === 'bass' ? 'bass' : 'treble';
-    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
-    const symbol = isSharp ? '♯' : '♭';
-    let ksx = 46;
-    accLetters.forEach((_, i) => {
-      const ky = noteYPos(positions[i], topLine, gap);
-      svg.appendChild(el('text', {x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'}, symbol));
-      ksx += 10;
-    });
-  }
+  const keyShort = KEY_SIGS[keyIndex].short;
+  if (keyShort !== 'C') stave.addKeySignature(keyShort);
 
-  // Note position
-  const noteCx = accLetters.length > 0 ? 195 : 180;
-  const cy = noteYPos(note.step, topLine, gap);
-  const r  = 7;
+  stave.setContext(context).draw();
 
-  // Ledger lines — below staff at steps -2, -4, -6...; above staff at steps 10, 12...
-  // Step 0 = E4 (bottom line), step 8 = F5 (top line) — no ledger needed there.
-  const ledgerSteps = [];
-  for (let s = -2; s >= note.step; s -= 2) ledgerSteps.push(s);
-  for (let s = 10; s <= note.step; s += 2) ledgerSteps.push(s);
+  // Expose staff geometry so play-the-notes.js can position its pitch line
+  window.staffGeometry = {
+    topLineY: stave.getYForLine(0),
+    lineGap:  stave.getSpacingBetweenLines(),
+  };
 
-  [...new Set(ledgerSteps)].forEach(s => {
-    const ly = noteYPos(s, topLine, gap);
-    svg.appendChild(el('line', {
-      x1:noteCx-r-4, x2:noteCx+r+4, y1:ly, y2:ly,
-      stroke:ledgerCol, 'stroke-width':'1.5',
-    }));
-  });
+  const vfKey    = noteToVFKey(note.name);
+  const clefType = clef === 'bass' ? 'bass' : 'treble';
 
-  // Note head
-  svg.appendChild(el('ellipse', {
-    cx:noteCx, cy,
-    rx:r, ry:Math.round(r*0.72),
-    fill:noteCol,
-    transform:`rotate(-15,${noteCx},${cy})`,
-  }));
+  const staveNote = new VF.StaveNote({ clef: clefType, keys: [vfKey], duration: 'q', auto_stem: true });
+  staveNote.setStyle({ fillStyle: noteCol, strokeStyle: noteCol });
 
-  // Stem
-  const stemUp = note.step < 4;
-  svg.appendChild(el('line', {
-    x1:stemUp?noteCx+r-1:noteCx-r+1,
-    x2:stemUp?noteCx+r-1:noteCx-r+1,
-    y1:cy, y2:stemUp?cy-32:cy+32,
-    stroke:noteCol,'stroke-width':'1.5',
-  }));
-
-  // Note name label (shown in PTN mode or if opts.showLabel)
   if (opts.showLabel) {
-    const labelY = stemUp ? cy + r + 14 : cy - r - 6;
-    svg.appendChild(el('text', {
-      x:noteCx, y:labelY,
-      'font-size':'11', 'font-weight':'600',
-      fill:'#185FA5', 'text-anchor':'middle',
-      'font-family':'-apple-system,BlinkMacSystemFont,sans-serif',
-    }, note.name));
+    const ann = new VF.Annotation(note.name);
+    ann.setFont('Arial', 11, 'bold');
+    ann.setStyle({ fillStyle: '#185FA5', strokeStyle: '#185FA5' });
+    ann.setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
+    staveNote.addModifier(ann, 0);
   }
+
+  const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
+  voice.setMode(VF.Voice.Mode.SOFT);
+  voice.addTickables([staveNote]);
+
+  const noteAreaW = staveX + staveW - stave.getNoteStartX();
+  new VF.Formatter().joinVoices([voice]).format([voice], noteAreaW - 20);
+  voice.draw(context, stave);
 }
