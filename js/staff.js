@@ -124,7 +124,8 @@ function drawStaff(note, opts = {}) {
   if (prev) prev.remove();
 
   const VF = Vex.Flow;
-  const W = 340, H = 130;
+  // Use a taller canvas so ledger lines below the staff aren't clipped
+  const W = 400, H = 160;
 
   const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
   renderer.resize(W, H);
@@ -134,30 +135,29 @@ function drawStaff(note, opts = {}) {
   const svgEl = container.querySelector('svg:not(#staff-overlay)');
   if (svgEl) {
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svgEl.style.width    = '100%';
-    svgEl.style.height   = 'auto';
-    svgEl.style.display  = 'block';
-    // Insert before overlay so overlay stays on top
+    svgEl.style.width   = '100%';
+    svgEl.style.height  = 'auto';
+    svgEl.style.display = 'block';
     container.insertBefore(svgEl, container.querySelector('#staff-overlay'));
   }
 
-  // Size overlay to match
+  // Keep overlay viewBox in sync
   const overlay = document.getElementById('staff-overlay');
-  if (overlay) {
-    overlay.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    overlay.style.width  = '100%';
-    overlay.style.height = '100%';
-  }
+  if (overlay) overlay.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
   const isDark  = darkMode;
-  const lineCol = isDark ? '#555' : '#888';
   const noteCol = isDark ? '#e0dfd8' : '#1a1a18';
+  const clefCol = isDark ? '#aaa'    : '#555';
 
-  context.setStrokeStyle(lineCol);
-  context.setFillStyle(isDark ? '#aaa' : '#666');
+  context.setStrokeStyle(isDark ? '#555' : '#888');
+  context.setFillStyle(clefCol);
 
-  const staveX = 10, staveY = 12, staveW = W - 20;
+  // staveY=30 gives space above for labels; staveW fills width leaving margins
+  const staveX = 10, staveY = 30, staveW = W - 20;
   const stave = new VF.Stave(staveX, staveY, staveW);
+  stave.setConfigForLines([
+    {visible:true},{visible:true},{visible:true},{visible:true},{visible:true}
+  ]);
 
   if (clef === 'bass') {
     stave.addClef('bass');
@@ -172,7 +172,7 @@ function drawStaff(note, opts = {}) {
 
   stave.setContext(context).draw();
 
-  // Expose staff geometry for pitch line positioning
+  // Expose geometry for the pitch line overlay
   window.staffGeometry = {
     topLineY: stave.getYForLine(0),
     lineGap:  stave.getSpacingBetweenLines(),
@@ -182,14 +182,17 @@ function drawStaff(note, opts = {}) {
   const vfKey    = noteToVFKey(note.name);
   const clefType = clef === 'bass' ? 'bass' : 'treble';
 
-  const staveNote = new VF.StaveNote({ clef: clefType, keys: [vfKey], duration: 'q', auto_stem: true });
+  const staveNote = new VF.StaveNote({
+    clef: clefType, keys: [vfKey], duration: 'q', auto_stem: true,
+  });
   staveNote.setStyle({ fillStyle: noteCol, strokeStyle: noteCol });
 
   if (opts.showLabel) {
     const ann = new VF.Annotation(note.name);
-    ann.setFont('-apple-system, BlinkMacSystemFont, Arial, sans-serif', 11, 'bold');
+    ann.setFont('Arial', 11, 'bold');
     ann.setStyle({ fillStyle: '#185FA5', strokeStyle: '#185FA5' });
-    ann.setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
+    // Always place label above so it's never clipped below the canvas
+    ann.setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
     staveNote.addModifier(ann, 0);
   }
 
@@ -197,15 +200,14 @@ function drawStaff(note, opts = {}) {
   voice.setMode(VF.Voice.Mode.SOFT);
   voice.addTickables([staveNote]);
 
-  // Centre the note in the available space after the clef/key sig
-  const noteStartX  = stave.getNoteStartX();
-  const noteAreaW   = (staveX + staveW) - noteStartX;
-  const formatter   = new VF.Formatter().joinVoices([voice]);
-  formatter.format([voice], noteAreaW - 40);
+  // Format tightly then shift note to horizontal centre of note area
+  const noteStartX = stave.getNoteStartX();
+  const noteEndX   = staveX + staveW - 20;
+  const noteAreaW  = noteEndX - noteStartX;
 
-  // Shift note to horizontal centre of available area
-  const noteX       = noteStartX + (noteAreaW / 2);
-  staveNote.setXShift(noteX - staveNote.getAbsoluteX() - 10);
+  new VF.Formatter().joinVoices([voice]).format([voice], 60);
+  // After format, note sits at noteStartX; shift to centre
+  staveNote.setXShift((noteAreaW / 2) - 30);
 
   voice.draw(context, stave);
 }
