@@ -191,6 +191,7 @@ function drawStaff(note, opts = {}) {
     const ann = new VF.Annotation(note.name);
     ann.setFont('Arial', 11, 'bold');
     ann.setStyle({ fillStyle: '#185FA5', strokeStyle: '#185FA5' });
+    ann.setJustification(VF.AnnotationHorizontalJustify.CENTER);
     ann.setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
     staveNote.addModifier(ann, 0);
   }
