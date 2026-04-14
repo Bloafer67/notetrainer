@@ -118,7 +118,10 @@ function noteToVFKey(noteName) {
 function drawStaff(note, opts = {}) {
   const container = document.getElementById('staff-container');
   if (!container) return;
-  container.innerHTML = '';
+
+  // Remove previous VexFlow SVG but keep the overlay
+  const prev = container.querySelector('svg:not(#staff-overlay)');
+  if (prev) prev.remove();
 
   const VF = Vex.Flow;
   const W = 340, H = 130;
@@ -127,23 +130,33 @@ function drawStaff(note, opts = {}) {
   renderer.resize(W, H);
   const context = renderer.getContext();
 
-  // Make SVG responsive
-  const svgEl = container.querySelector('svg');
+  // Make VexFlow SVG responsive and sit behind the overlay
+  const svgEl = container.querySelector('svg:not(#staff-overlay)');
   if (svgEl) {
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svgEl.style.width  = '100%';
-    svgEl.style.height = 'auto';
+    svgEl.style.width    = '100%';
+    svgEl.style.height   = 'auto';
+    svgEl.style.display  = 'block';
+    // Insert before overlay so overlay stays on top
+    container.insertBefore(svgEl, container.querySelector('#staff-overlay'));
+  }
+
+  // Size overlay to match
+  const overlay = document.getElementById('staff-overlay');
+  if (overlay) {
+    overlay.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    overlay.style.width  = '100%';
+    overlay.style.height = '100%';
   }
 
   const isDark  = darkMode;
-  const lineCol = isDark ? '#666' : '#888';
-  const clefCol = isDark ? '#aaa' : '#666';
+  const lineCol = isDark ? '#555' : '#888';
   const noteCol = isDark ? '#e0dfd8' : '#1a1a18';
 
   context.setStrokeStyle(lineCol);
-  context.setFillStyle(clefCol);
+  context.setFillStyle(isDark ? '#aaa' : '#666');
 
-  const staveX = 10, staveY = 5, staveW = W - 20;
+  const staveX = 10, staveY = 12, staveW = W - 20;
   const stave = new VF.Stave(staveX, staveY, staveW);
 
   if (clef === 'bass') {
@@ -159,10 +172,11 @@ function drawStaff(note, opts = {}) {
 
   stave.setContext(context).draw();
 
-  // Expose staff geometry so play-the-notes.js can position its pitch line
+  // Expose staff geometry for pitch line positioning
   window.staffGeometry = {
     topLineY: stave.getYForLine(0),
     lineGap:  stave.getSpacingBetweenLines(),
+    W, H,
   };
 
   const vfKey    = noteToVFKey(note.name);
@@ -173,7 +187,7 @@ function drawStaff(note, opts = {}) {
 
   if (opts.showLabel) {
     const ann = new VF.Annotation(note.name);
-    ann.setFont('Arial', 11, 'bold');
+    ann.setFont('-apple-system, BlinkMacSystemFont, Arial, sans-serif', 11, 'bold');
     ann.setStyle({ fillStyle: '#185FA5', strokeStyle: '#185FA5' });
     ann.setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM);
     staveNote.addModifier(ann, 0);
@@ -183,7 +197,15 @@ function drawStaff(note, opts = {}) {
   voice.setMode(VF.Voice.Mode.SOFT);
   voice.addTickables([staveNote]);
 
-  const noteAreaW = staveX + staveW - stave.getNoteStartX();
-  new VF.Formatter().joinVoices([voice]).format([voice], noteAreaW - 20);
+  // Centre the note in the available space after the clef/key sig
+  const noteStartX  = stave.getNoteStartX();
+  const noteAreaW   = (staveX + staveW) - noteStartX;
+  const formatter   = new VF.Formatter().joinVoices([voice]);
+  formatter.format([voice], noteAreaW - 40);
+
+  // Shift note to horizontal centre of available area
+  const noteX       = noteStartX + (noteAreaW / 2);
+  staveNote.setXShift(noteX - staveNote.getAbsoluteX() - 10);
+
   voice.draw(context, stave);
 }
