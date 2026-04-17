@@ -198,15 +198,17 @@ function drawStaff(note, opts = {}) {
 
   new VF.Formatter().joinVoices([voice]).format([voice], 60);
   // After format, note sits at noteStartX; shift to centre
-  staveNote.setXShift((noteAreaW / 2) - 30);
+  const xShift = (noteAreaW / 2) - 30;
+  staveNote.setXShift(xShift);
 
   voice.draw(context, stave);
 
   // Draw note name label centered under the notehead.
-  // We append directly to the VexFlow SVG (svgEl) so getAbsoluteX() coordinates
-  // are in the same space — no overlay coordinate-system mismatch.
+  // We append directly to the VexFlow SVG (svgEl) so coordinates match.
+  // getAbsoluteX() returns the formatter base position without x_shift,
+  // so we add xShift to get the actual rendered note center.
   if (opts.showLabel && svgEl) {
-    const noteX  = staveNote.getAbsoluteX();
+    const noteX  = staveNote.getAbsoluteX() + xShift;
     const geo    = window.staffGeometry;
     const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 22;
 
