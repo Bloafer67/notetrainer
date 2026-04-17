@@ -202,31 +202,24 @@ function drawStaff(note, opts = {}) {
 
   voice.draw(context, stave);
 
-  // Draw note name label centered under the notehead on the overlay SVG
-  if (opts.showLabel) {
-    const overlay = document.getElementById('staff-overlay');
-    if (overlay) {
-      // Remove any previous label
-      const prev = overlay.querySelector('#note-name-label');
-      if (prev) prev.remove();
+  // Draw note name label centered under the notehead.
+  // We append directly to the VexFlow SVG (svgEl) so getAbsoluteX() coordinates
+  // are in the same space — no overlay coordinate-system mismatch.
+  if (opts.showLabel && svgEl) {
+    const noteX  = staveNote.getAbsoluteX();
+    const geo    = window.staffGeometry;
+    const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 22;
 
-      // Compute X from the same values used for setXShift — more reliable than getAbsoluteX()
-      const noteX = noteStartX + (noteAreaW / 2) - 30;
-      const geo   = window.staffGeometry;
-      const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 22;
-
-      const ns  = 'http://www.w3.org/2000/svg';
-      const txt = document.createElementNS(ns, 'text');
-      txt.setAttribute('id', 'note-name-label');
-      txt.setAttribute('x', String(noteX));
-      txt.setAttribute('y', String(labelY));
-      txt.setAttribute('text-anchor', 'middle');
-      txt.setAttribute('font-size', '12');
-      txt.setAttribute('font-weight', '600');
-      txt.setAttribute('fill', '#185FA5');
-      txt.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, sans-serif');
-      txt.textContent = note.name;
-      overlay.appendChild(txt);
-    }
+    const ns  = 'http://www.w3.org/2000/svg';
+    const txt = document.createElementNS(ns, 'text');
+    txt.setAttribute('x', String(noteX));
+    txt.setAttribute('y', String(labelY));
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('font-size', '12');
+    txt.setAttribute('font-weight', '600');
+    txt.setAttribute('fill', '#185FA5');
+    txt.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, sans-serif');
+    txt.textContent = note.name;
+    svgEl.appendChild(txt);
   }
 }
