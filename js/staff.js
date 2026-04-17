@@ -210,7 +210,8 @@ function drawStaff(note, opts = {}) {
       const prev = overlay.querySelector('#note-name-label');
       if (prev) prev.remove();
 
-      const noteX = staveNote.getAbsoluteX();
+      // Compute X from the same values used for setXShift — more reliable than getAbsoluteX()
+      const noteX = noteStartX + (noteAreaW / 2) - 30;
       const geo   = window.staffGeometry;
       const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 22;
 

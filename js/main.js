@@ -45,8 +45,11 @@ function toggleNoteNames() {
 function updateNoteNamesBtn() {
   const btn = document.getElementById('note-names-toggle');
   if (!btn) return;
+  // Only show the toggle on Play the Notes — it's meaningless on Name the Notes
+  // (defeats the purpose) and irrelevant on Play Along
+  const visible = gameMode === 'play-the-notes';
+  btn.style.display = visible ? '' : 'none';
   btn.textContent = showNoteNames ? 'Names: on' : 'Names: off';
-  btn.classList.toggle('hidden', !showNoteNames);
 }
 
 // ── Icon helpers ──────────────────────────────────────────────────────────
@@ -130,6 +133,7 @@ function onGameModeChange() {
   history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
 
   setPageTitle(gameMode);
+  updateNoteNamesBtn();
   switchTab('game');
   showPregame();
 }
@@ -226,6 +230,7 @@ function initApp() {
     document.getElementById('game-mode-emoji').textContent = '🎸';
     document.getElementById('clef-select').value = 'guitar';
     clef = 'guitar';
+    updateNoteNamesBtn();
   }
 
   // Handle browser back/forward
@@ -239,6 +244,7 @@ function initApp() {
       clef = 'guitar';
     }
     setPageTitle(mode);
+    updateNoteNamesBtn();
     showPregame();
   });
 
