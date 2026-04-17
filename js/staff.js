@@ -210,7 +210,7 @@ function drawStaff(note, opts = {}) {
   if (opts.showLabel && svgEl) {
     const noteX  = staveNote.getAbsoluteX() + xShift;
     const geo    = window.staffGeometry;
-    const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 22;
+    const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 32;
 
     const ns  = 'http://www.w3.org/2000/svg';
     const txt = document.createElementNS(ns, 'text');
