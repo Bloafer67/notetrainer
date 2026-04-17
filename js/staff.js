@@ -208,9 +208,14 @@ function drawStaff(note, opts = {}) {
   // getAbsoluteX() returns the formatter base position without x_shift,
   // so we add xShift to get the actual rendered note center.
   if (opts.showLabel && svgEl) {
-    const noteX  = staveNote.getAbsoluteX() + xShift;
-    const geo    = window.staffGeometry;
-    const labelY = (geo ? geo.topLineY + geo.lineGap * 4 : 70) + 32;
+    const noteX       = staveNote.getAbsoluteX() + xShift;
+    const geo         = window.staffGeometry;
+    const staffBottomY = geo ? geo.topLineY + geo.lineGap * 4 : 70;
+    // For notes below the staff (ledger lines), anchor label to the notehead;
+    // for notes on/above the staff, anchor to the staff bottom line.
+    const noteYs      = staveNote.getYs();
+    const noteHeadY   = noteYs && noteYs.length ? noteYs[0] : staffBottomY;
+    const labelY      = Math.max(noteHeadY, staffBottomY) + 18;
 
     const ns  = 'http://www.w3.org/2000/svg';
     const txt = document.createElementNS(ns, 'text');
