@@ -47,6 +47,8 @@ function updateNoteNamesBtn() {
   if (!btn) return;
   btn.textContent = showNoteNames ? 'Names: on' : 'Names: off';
   btn.classList.toggle('hidden', !showNoteNames);
+  // Toggle only affects Play the Notes — hide it in other modes
+  btn.style.display = gameMode === 'play-the-notes' ? '' : 'none';
 }
 
 // ── Icon helpers ──────────────────────────────────────────────────────────
@@ -194,6 +196,7 @@ function showPregame() {
   const paSelectors  = document.getElementById('pa-pregame-selectors');
   if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
+  updateNoteNamesBtn();
   loadBest();
 }
 
