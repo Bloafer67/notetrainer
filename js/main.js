@@ -95,6 +95,7 @@ function onGameModeChange() {
   // Default to Guitar (8vb) for pitch-based modes
   if (gameMode === 'play-the-notes' || gameMode === 'play-along') {
     document.getElementById('clef-select').value = 'guitar';
+    window.refreshCustomSelect?.(document.getElementById('clef-select'));
     clef = 'guitar';
   }
 
@@ -210,8 +211,10 @@ function initApp() {
   if (path === '/play-the-notes') {
     gameMode = 'play-the-notes';
     document.getElementById('game-mode-select').value = 'play-the-notes';
+    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
     document.getElementById('game-mode-emoji').textContent = '🎸';
     document.getElementById('clef-select').value = 'guitar';
+    window.refreshCustomSelect?.(document.getElementById('clef-select'));
     clef = 'guitar';
   }
 
@@ -220,9 +223,11 @@ function initApp() {
     const mode = e.state?.gameMode || 'name-the-notes';
     gameMode = mode;
     document.getElementById('game-mode-select').value = mode;
+    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
     document.getElementById('game-mode-emoji').textContent = GAME_MODE_CONFIG[mode].emoji;
     if (mode === 'play-the-notes') {
       document.getElementById('clef-select').value = 'guitar';
+      window.refreshCustomSelect?.(document.getElementById('clef-select'));
       clef = 'guitar';
     }
     showPregame();
