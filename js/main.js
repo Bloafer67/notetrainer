@@ -33,6 +33,8 @@ function toggleMute() {
 
 // ── Note names toggle ─────────────────────────────────────────────────────
 let showNoteNames = localStorage.getItem('mntr-show-names') !== '0'; // default ON
+window.lastResult = null;
+window.lastPlayAlongSongKey = 'dinks-song';
 
 function toggleNoteNames() {
   showNoteNames = !showNoteNames;
@@ -194,6 +196,17 @@ function toMMSS(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return m + ':' + String(s).padStart(2, '0');
+}
+
+function formatElapsedMs(ms, includeFractions = false) {
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
+  const safeMs = Math.max(0, Math.round(ms));
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (!includeFractions) return minutes + ':' + String(seconds).padStart(2, '0');
+  const hundredths = Math.floor((safeMs % 1000) / 10);
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
 }
 
 // Expose gameMode on window so game files can read it

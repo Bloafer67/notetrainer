@@ -109,6 +109,7 @@ function startGame() {
 function startNameTheNotes() {
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
+  window.lastResult = null;
 
   document.getElementById('score').textContent = '0';
   document.getElementById('streak').textContent = '0';
@@ -165,6 +166,17 @@ function endGame() {
   setTimerIcon('play');
   if (window.gameMode === 'play-the-notes') stopPlayTheNotes();
 
+  const clefLabel = clef === 'guitar'
+    ? 'Guitar (8vb)'
+    : clef.charAt(0).toUpperCase() + clef.slice(1);
+  window.lastResult = {
+    game: window.gameMode || 'name-the-notes',
+    score: lastScore,
+    clef: clefLabel,
+    key: KEY_SIGS[keyIndex].label,
+    duration: gameDuration,
+  };
+
   document.getElementById('active-game').style.display = 'none';
   document.getElementById('overlay-pause').classList.remove('show');
 
@@ -181,8 +193,7 @@ function endGame() {
 
   // Check if score qualifies for top 10 on this board
   const bKey = currentBoardKey();
-  const board = lbCache.filter(e => boardKey(e) === bKey);
-  const qualifies = lastScore > 0 && (board.length < 10 || lastScore >= board[board.length - 1]?.score);
+  const qualifies = doesResultQualify(window.lastResult, bKey);
   const recapForm = document.getElementById('recap-form');
   if (recapForm) recapForm.style.display = qualifies ? 'flex' : 'none';
 
