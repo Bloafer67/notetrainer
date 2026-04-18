@@ -3,23 +3,27 @@
 // detects mic pitch, and advances the cursor note by note.
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const PA_HIT_CENTS   = 80;   // cents tolerance for a hit
-const PA_HIT_HOLD_MS = 180;  // ms to hold pitch before registering
+const PA_HIT_CENTS   = 80;
+const PA_HIT_HOLD_MS = 180;
 
 // ── State ─────────────────────────────────────────────────────────────────
-let pa_active    = false;
-let pa_song      = null;
-let pa_osmd      = null;
-let pa_hitTimer  = null;
-let pa_smoothHz  = null;
-let pa_nashville = false;
-let pa_score     = 0;
-let pa_staffTopY = null;  // y (in wrap coords) of top staff line — F5
-let pa_staffBotY = null;  // y (in wrap coords) of bottom staff line — E4
+let pa_active        = false;
+let pa_songKey       = 'dinks-song';
+let pa_song          = null;
+let pa_osmd          = null;
+let pa_hitTimer      = null;
+let pa_wrongTimer    = null;
+let pa_wrongArmed    = true;
+let pa_smoothHz      = null;
+let pa_nashville     = false;
+let pa_correctNotes  = 0;
+let pa_wrongAttempts = 0;
+let pa_elapsedMs     = 0;
+let pa_startedAt     = 0;
+let pa_timerInterval = null;
+let pa_staffTopY     = null;
+let pa_staffBotY     = null;
 
-// Chromatic map of scientific pitch → diatonic "step" on a treble staff,
-// where 0 = E4 (bottom line) and 8 = F5 (top line). Fractional steps place
-// accidentals between their neighbours for smooth pitch-line movement.
 const PA_HZ_STEP_TABLE = (() => {
   const noteSteps = {
     'E3':-7, 'F3':-6, 'F#3':-5.5, 'G3':-5, 'G#3':-4.5,
@@ -53,16 +57,98 @@ function populateSongSelect() {
   });
 }
 
+function paGetMicElements() {
+  const root = document.getElementById('pa-active');
+  return {
+    micEl: root?.querySelector('#mic-status') || null,
+    micTxt: root?.querySelector('#mic-status-text') || null,
+  };
+}
+
+function paClearHitTimer() {
+  if (pa_hitTimer) {
+    clearTimeout(pa_hitTimer);
+    pa_hitTimer = null;
+  }
+}
+
+function paClearWrongTimer(resetArmed = false) {
+  if (pa_wrongTimer) {
+    clearTimeout(pa_wrongTimer);
+    pa_wrongTimer = null;
+  }
+  if (resetArmed) pa_wrongArmed = true;
+}
+
+function paResetRoundState() {
+  pa_smoothHz = null;
+  pa_correctNotes = 0;
+  pa_wrongAttempts = 0;
+  pa_elapsedMs = 0;
+  pa_startedAt = performance.now();
+  pa_wrongArmed = true;
+  paClearHitTimer();
+  paClearWrongTimer();
+  clearInterval(pa_timerInterval);
+  pa_timerInterval = setInterval(paUpdateElapsedTime, 250);
+}
+
+function paAccuracy() {
+  const attempts = pa_correctNotes + pa_wrongAttempts;
+  return attempts > 0 ? pa_correctNotes / attempts : 1;
+}
+
+function paUpdateElapsedTime(finalize = false) {
+  if (!pa_active && !finalize) return;
+  pa_elapsedMs = Math.max(0, performance.now() - pa_startedAt);
+  const timeEl = document.getElementById('pa-time-display');
+  if (timeEl) timeEl.textContent = formatElapsedMs(pa_elapsedMs);
+}
+
+function paUpdateSummary() {
+  paUpdateElapsedTime();
+
+  const accuracyEl = document.getElementById('pa-accuracy-display');
+  if (accuracyEl) accuracyEl.textContent = formatAccuracy(paAccuracy());
+
+  const subline = document.getElementById('pa-subline');
+  if (subline) {
+    const notesLabel = pa_correctNotes === 1 ? 'note' : 'notes';
+    const missLabel = pa_wrongAttempts === 1 ? 'miss' : 'misses';
+    subline.textContent = `${pa_correctNotes} ${notesLabel} cleared · ${pa_wrongAttempts} ${missLabel}`;
+  }
+}
+
+function paResetSaveControls() {
+  const form = document.getElementById('pa-complete-form');
+  const nameInput = document.getElementById('pa-player-name');
+  const saveBtn = document.getElementById('pa-save-btn');
+  if (form) form.style.display = 'none';
+  if (nameInput) nameInput.value = '';
+  if (saveBtn) {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+    saveBtn.onclick = saveToLeaderboard;
+  }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────
 async function startPlayAlong() {
-  const songKey = document.getElementById('pa-song-select')?.value || 'dinks-song';
-  pa_song = SONGS[songKey];
-  if (!pa_song) { alert('Song not found'); return; }
+  pa_songKey = document.getElementById('pa-song-select')?.value || 'dinks-song';
+  pa_song = SONGS[pa_songKey];
+  window.lastPlayAlongSongKey = pa_songKey;
+  window.lastResult = null;
+  if (!pa_song) {
+    alert('Song not found');
+    return;
+  }
 
-  const micEl  = document.getElementById('mic-status');
-  const micTxt = document.getElementById('mic-status-text');
-  if (micEl)  { micEl.style.display = 'flex'; micEl.className = 'mic-status'; }
-  if (micTxt)   micTxt.textContent = 'Requesting mic…';
+  const { micEl, micTxt } = paGetMicElements();
+  if (micEl) {
+    micEl.style.display = 'flex';
+    micEl.className = 'mic-status';
+  }
+  if (micTxt) micTxt.textContent = 'Requesting mic…';
 
   const granted = await startPitchDetection(pa_onPitchFrame);
   if (!granted) {
@@ -72,26 +158,30 @@ async function startPlayAlong() {
     return;
   }
 
-  if (micEl)  { micEl.className = 'mic-status active'; }
-  if (micTxt)   micTxt.textContent = 'Listening…';
+  if (micEl) micEl.className = 'mic-status active';
+  if (micTxt) micTxt.textContent = 'Listening…';
 
-  pa_active   = true;
-  pa_smoothHz = null;
-  pa_score    = 0;
+  pa_active = true;
+  paResetRoundState();
 
   document.getElementById('pregame-screen').classList.remove('show');
   document.getElementById('active-game').style.display = 'none';
-  document.getElementById('pa-active').style.display   = 'flex';
+  document.getElementById('pa-active').style.display = 'flex';
   document.getElementById('recap-view').classList.remove('show');
-  document.getElementById('game-ui').style.display     = '';
-  document.getElementById('pa-score-display').textContent = '0';
+  document.getElementById('game-ui').style.display = '';
+
   const titleEl = document.getElementById('pa-title');
   if (titleEl) titleEl.textContent = pa_song.meta.title;
 
   const complete = document.getElementById('pa-complete');
   const controls = document.getElementById('pa-controls-row');
+  const feedback = document.getElementById('pa-feedback');
   if (complete) complete.style.display = 'none';
   if (controls) controls.style.display = '';
+  if (feedback) feedback.textContent = '';
+
+  paResetSaveControls();
+  paUpdateSummary();
 
   await pa_loadAndRender();
 }
@@ -103,13 +193,13 @@ async function pa_loadAndRender() {
 
   if (!pa_osmd) {
     pa_osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
-      autoResize:                      false,
-      drawTitle:                       false,
-      drawSubtitle:                    false,
-      drawComposer:                    false,
-      drawCredits:                     false,
-      drawPartNames:                   false,
-      drawMeasureNumbers:              false,
+      autoResize: false,
+      drawTitle: false,
+      drawSubtitle: false,
+      drawComposer: false,
+      drawCredits: false,
+      drawPartNames: false,
+      drawMeasureNumbers: false,
       renderSingleHorizontalStaffline: true,
     });
   }
@@ -130,16 +220,23 @@ async function pa_loadAndRender() {
     pa_scrollToCursor();
   } catch (err) {
     console.error('OSMD load/render failed:', err);
+    stopPlayAlong();
     alert(`Could not load song: ${err.message}`);
+    showPregame();
   }
 }
 
 // ── Stop / Exit ───────────────────────────────────────────────────────────
 function stopPlayAlong() {
   pa_active = false;
+  clearInterval(pa_timerInterval);
+  pa_timerInterval = null;
   stopPitchDetection();
-  if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
-  const micEl = document.getElementById('mic-status');
+  paClearHitTimer();
+  paClearWrongTimer(true);
+  const overlay = document.getElementById('pa-pitch-overlay');
+  if (overlay) overlay.innerHTML = '';
+  const { micEl } = paGetMicElements();
   if (micEl) micEl.style.display = 'none';
 }
 
@@ -165,7 +262,6 @@ function pa_noteIsRest(note) {
 }
 
 function pa_skipRestsAndEmpty() {
-  // Advance cursor past any rests or empty entries until a pitched note or end.
   while (!pa_cursorEnded()) {
     const note = pa_currentNote();
     if (note && !pa_noteIsRest(note)) return;
@@ -179,63 +275,55 @@ function pa_currentTargetHz() {
   const pitch = note.Pitch;
   if (!pitch) return null;
 
-  // Prefer OSMD's computed frequency when available.
   let hz = typeof pitch.Frequency === 'number' ? pitch.Frequency : null;
 
-  // Fallback: build scientific name → NOTE_FREQS lookup.
   if (!hz) {
-    const NAMES = ['C','D','E','F','G','A','B'];
+    const NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
     const accMap = { 1: '#', 2: '##', '-1': 'b', '-2': 'bb' };
-    const base   = NAMES[pitch.FundamentalNote];
-    const acc    = accMap[pitch.AccidentalHalfTones] || '';
+    const base = NAMES[pitch.FundamentalNote];
+    const acc = accMap[pitch.AccidentalHalfTones] || '';
     hz = NOTE_FREQS[`${base}${acc}${pitch.Octave}`];
   }
-  // OSMD gives us the *sounding* pitch — it already applies any clef-octave
-  // transposition (e.g. treble-8 / guitar clef) from the MusicXML. No further
-  // octave adjustment needed here.
+
   return hz || null;
 }
 
 function pa_scrollToCursor() {
   const container = document.getElementById('pa-osmd-container');
-  const cEl       = pa_osmd?.cursor?.cursorElement;
+  const cEl = pa_osmd?.cursor?.cursorElement;
   if (!container || !cEl) return;
-  const cRect    = cEl.getBoundingClientRect();
+  const cRect = cEl.getBoundingClientRect();
   const contRect = container.getBoundingClientRect();
-  const cursorX  = cRect.left - contRect.left + container.scrollLeft;
-  const target   = cursorX - container.clientWidth / 2;
+  const cursorX = cRect.left - contRect.left + container.scrollLeft;
+  const target = cursorX - container.clientWidth / 2;
   container.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
 }
 
-// Measure the staff's top/bottom Y (in wrap coordinates) using the cursor,
-// which is rendered as a vertical element spanning roughly the staff height.
 function pa_measureStaffExtent() {
   const wrap = document.querySelector('.pa-staff-wrap');
-  const cEl  = pa_osmd?.cursor?.cursorElement;
+  const cEl = pa_osmd?.cursor?.cursorElement;
   if (!wrap || !cEl) return;
   const cRect = cEl.getBoundingClientRect();
   const wRect = wrap.getBoundingClientRect();
-  pa_staffTopY = cRect.top    - wRect.top;
+  pa_staffTopY = cRect.top - wRect.top;
   pa_staffBotY = cRect.bottom - wRect.top;
 }
 
 function pa_hzToStep(hz) {
   if (!hz || hz < 60) return null;
   const visualHz = pa_song?.meta?.guitarOctave ? hz * 2 : hz;
-  const t = PA_HZ_STEP_TABLE;
-  if (visualHz <= t[0].hz)                 return t[0].step;
-  if (visualHz >= t[t.length - 1].hz)      return t[t.length - 1].step;
-  for (let i = 0; i < t.length - 1; i++) {
-    if (visualHz >= t[i].hz && visualHz <= t[i + 1].hz) {
-      const frac = (visualHz - t[i].hz) / (t[i + 1].hz - t[i].hz);
-      return t[i].step + (t[i + 1].step - t[i].step) * frac;
+  const table = PA_HZ_STEP_TABLE;
+  if (visualHz <= table[0].hz) return table[0].step;
+  if (visualHz >= table[table.length - 1].hz) return table[table.length - 1].step;
+  for (let i = 0; i < table.length - 1; i++) {
+    if (visualHz >= table[i].hz && visualHz <= table[i + 1].hz) {
+      const frac = (visualHz - table[i].hz) / (table[i + 1].hz - table[i].hz);
+      return table[i].step + (table[i + 1].step - table[i].step) * frac;
     }
   }
   return null;
 }
 
-// Draw a horizontal tuner-style line at the detected pitch's Y position,
-// centred over the cursor. Colour green when in range, blue otherwise.
 function pa_updatePitchOverlay(hz, inRange) {
   const svg = document.getElementById('pa-pitch-overlay');
   const wrap = document.querySelector('.pa-staff-wrap');
@@ -246,23 +334,21 @@ function pa_updatePitchOverlay(hz, inRange) {
   const step = pa_hzToStep(hz);
   if (step === null) return;
 
-  // 5 staff lines, 4 gaps → 8 half-steps from bottom line (step 0) to top line (step 8)
   const pxPerStep = (pa_staffBotY - pa_staffTopY) / 8;
   const y = pa_staffBotY - step * pxPerStep;
 
-  // X: center the line under the cursor (which we keep centred in the container)
   const container = document.getElementById('pa-osmd-container');
   const cEl = pa_osmd?.cursor?.cursorElement;
   let centerX = wrap.clientWidth / 2;
   if (container && cEl) {
-    const cRect   = cEl.getBoundingClientRect();
-    const wRect   = wrap.getBoundingClientRect();
+    const cRect = cEl.getBoundingClientRect();
+    const wRect = wrap.getBoundingClientRect();
     centerX = cRect.left + cRect.width / 2 - wRect.left;
   }
 
   const color = inRange ? '#1D9E75' : '#185FA5';
-  const half  = 40;
-  const line  = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  const half = 40;
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.setAttribute('x1', centerX - half);
   line.setAttribute('x2', centerX + half);
   line.setAttribute('y1', y);
@@ -272,6 +358,12 @@ function pa_updatePitchOverlay(hz, inRange) {
   line.setAttribute('stroke-linecap', 'round');
   line.setAttribute('opacity', '0.85');
   svg.appendChild(line);
+}
+
+function pa_countWrongAttempt() {
+  pa_wrongAttempts++;
+  pa_wrongArmed = false;
+  paUpdateSummary();
 }
 
 // ── Pitch callback ────────────────────────────────────────────────────────
@@ -286,41 +378,58 @@ function pa_onPitchFrame(hz) {
 
   if (!hz || pa_cursorEnded()) {
     pa_updatePitchOverlay(null, false);
-    if (pa_hitTimer) { clearTimeout(pa_hitTimer); pa_hitTimer = null; }
+    paClearHitTimer();
+    paClearWrongTimer(true);
     return;
   }
 
   const targetHz = pa_currentTargetHz();
-  if (!targetHz) { pa_advance(); return; }
+  if (!targetHz) {
+    pa_advance();
+    return;
+  }
 
-  const cents   = Math.abs(1200 * Math.log2(hz / targetHz));
+  const cents = Math.abs(1200 * Math.log2(hz / targetHz));
   const inRange = cents <= PA_HIT_CENTS;
 
   pa_updatePitchOverlay(pa_smoothHz, inRange);
 
   if (inRange) {
+    paClearWrongTimer(true);
     if (!pa_hitTimer) {
       pa_hitTimer = setTimeout(() => {
         pa_hitTimer = null;
         pa_onNoteHit();
       }, PA_HIT_HOLD_MS);
     }
-  } else if (pa_hitTimer) {
-    clearTimeout(pa_hitTimer);
-    pa_hitTimer = null;
+    return;
+  }
+
+  paClearHitTimer();
+  if (pa_wrongArmed && !pa_wrongTimer) {
+    pa_wrongTimer = setTimeout(() => {
+      pa_wrongTimer = null;
+      if (!pa_active) return;
+      pa_countWrongAttempt();
+    }, PA_HIT_HOLD_MS);
   }
 }
 
 // ── Hit / advance ─────────────────────────────────────────────────────────
 function pa_onNoteHit() {
   if (!pa_active) return;
-  pa_score++;
-  document.getElementById('pa-score-display').textContent = pa_score;
+  pa_correctNotes++;
+  paClearWrongTimer(true);
+  paUpdateSummary();
   if (typeof playDing === 'function') playDing();
-  setTimeout(() => { if (pa_active) pa_advance(); }, 120);
+  setTimeout(() => {
+    if (pa_active) pa_advance();
+  }, 120);
 }
 
 function pa_advance() {
+  paClearHitTimer();
+  paClearWrongTimer(true);
   pa_osmd.cursor.next();
   pa_skipRestsAndEmpty();
   if (pa_cursorEnded()) {
@@ -331,26 +440,60 @@ function pa_advance() {
 }
 
 function pa_onSongComplete() {
+  paUpdateElapsedTime(true);
+  clearInterval(pa_timerInterval);
+  pa_timerInterval = null;
   pa_active = false;
   stopPitchDetection();
-  const micEl = document.getElementById('mic-status');
+  paClearHitTimer();
+  paClearWrongTimer(true);
+
+  const { micEl } = paGetMicElements();
   if (micEl) micEl.style.display = 'none';
+
+  window.lastResult = {
+    game: 'play-along',
+    song: pa_songKey,
+    score: pa_correctNotes,
+    time_ms: Math.round(pa_elapsedMs),
+    accuracy: paAccuracy(),
+  };
 
   const complete = document.getElementById('pa-complete');
   const controls = document.getElementById('pa-controls-row');
   const feedback = document.getElementById('pa-feedback');
-  const scoreNum = document.getElementById('pa-complete-score-num');
-  if (scoreNum) scoreNum.textContent = pa_score;
+  const timeNum = document.getElementById('pa-complete-time-num');
+  const accuracyNum = document.getElementById('pa-complete-accuracy-num');
+  const notesNum = document.getElementById('pa-complete-notes-num');
+  const missesNum = document.getElementById('pa-complete-misses-num');
+  const form = document.getElementById('pa-complete-form');
+  const nameInput = document.getElementById('pa-player-name');
+  const saveBtn = document.getElementById('pa-save-btn');
+
+  if (timeNum) timeNum.textContent = formatElapsedMs(pa_elapsedMs, true);
+  if (accuracyNum) accuracyNum.textContent = formatAccuracy(paAccuracy());
+  if (notesNum) notesNum.textContent = pa_correctNotes;
+  if (missesNum) missesNum.textContent = pa_wrongAttempts;
   if (complete) complete.style.display = 'flex';
   if (controls) controls.style.display = 'none';
   if (feedback) feedback.textContent = '';
+
+  const qualifies = doesResultQualify(window.lastResult);
+  if (form) form.style.display = qualifies ? 'flex' : 'none';
+  if (qualifies) {
+    const savedName = localStorage.getItem('mntr-playername') || '';
+    if (nameInput) nameInput.value = savedName;
+    if (saveBtn) {
+      saveBtn.textContent = 'Save';
+      saveBtn.disabled = false;
+      saveBtn.onclick = saveToLeaderboard;
+    }
+  }
 
   if (typeof launchConfetti === 'function') setTimeout(launchConfetti, 100);
 }
 
 // ── Nashville toggle ──────────────────────────────────────────────────────
-// Chord symbols come from the MusicXML. Nashville post-processing (walking
-// OSMD's rendered SVG text nodes) is deferred to Stage 3.
 function toggleNashville() {
   pa_nashville = !pa_nashville;
   const btn = document.getElementById('pa-nashville-btn');

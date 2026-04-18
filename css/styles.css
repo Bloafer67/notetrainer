@@ -622,20 +622,33 @@ details[open] summary::after { content: '▾'; }
 }
 .pa-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 0 4px;
+  gap: 12px; padding: 0 4px;
+}
+.pa-title-wrap {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
 }
 .pa-title {
   font-size: 16px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pa-score-wrap {
-  display: flex; align-items: baseline; gap: 4px;
-}
-.pa-score {
-  font-size: 28px; font-weight: 700; color: #185FA5; line-height: 1;
-}
-[data-theme="dark"] .pa-score { color: #378ADD; }
-.pa-score-label {
+.pa-subline {
   font-size: 11px; color: var(--text3);
+}
+.pa-header-controls {
+  display: flex; align-items: center; gap: 10px; margin-left: auto;
+}
+.pa-metrics {
+  display: flex; align-items: center; gap: 8px;
+}
+.pa-metric {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+.pa-metric-value {
+  font-size: 22px; font-weight: 700; color: #185FA5; line-height: 1;
+}
+[data-theme="dark"] .pa-metric-value { color: #378ADD; }
+.pa-metric-label {
+  font-size: 10px; color: var(--text3); letter-spacing: 0.03em;
 }
 .pa-nashville-btn {
   font-size: 11px; font-weight: 500; font-family: inherit;
@@ -651,4 +664,52 @@ details[open] summary::after { content: '▾'; }
 .pa-feedback {
   min-height: 20px; font-size: 14px; font-weight: 500;
   color: var(--text3); text-align: center;
+}
+.pa-complete {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 24px 18px 18px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; text-align: center;
+}
+.pa-complete-emoji {
+  font-size: 38px; line-height: 1;
+}
+.pa-complete-title {
+  font-size: 22px; font-weight: 700; color: var(--text);
+}
+.pa-complete-metrics {
+  display: flex; width: 100%; gap: 10px;
+}
+.pa-complete-metric {
+  flex: 1; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pa-complete-metric-num {
+  font-size: 26px; font-weight: 700; color: var(--primary); line-height: 1;
+}
+.pa-complete-metric-label {
+  font-size: 11px; color: var(--text3); letter-spacing: 0.03em;
+}
+.pa-complete-detail {
+  font-size: 13px; color: var(--text2);
+}
+.pa-complete-buttons {
+  display: flex; width: 100%; gap: 10px; margin-top: 4px;
+}
+.pa-complete-buttons .pregame-play-btn {
+  flex: 1;
+}
+@media (max-width: 520px) {
+  .pa-header {
+    align-items: flex-start;
+  }
+  .pa-header-controls {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .pa-complete-metrics,
+  .pa-complete-buttons {
+    flex-direction: column;
+  }
 }

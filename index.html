@@ -205,12 +205,21 @@
 
       <!-- Header row: song title + score + nashville toggle -->
       <div class="pa-header">
-        <div class="pa-title" id="pa-title">Dink's Song</div>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div class="pa-title-wrap">
+          <div class="pa-title" id="pa-title">Dink's Song</div>
+          <div class="pa-subline" id="pa-subline">Finish the song. Time counts up.</div>
+        </div>
+        <div class="pa-header-controls">
           <button class="pa-nashville-btn" id="pa-nashville-btn" onclick="toggleNashville()">Nashville</button>
-          <div class="pa-score-wrap">
-            <span class="pa-score" id="pa-score-display">0</span>
-            <span class="pa-score-label">notes</span>
+          <div class="pa-metrics">
+            <div class="pa-metric">
+              <span class="pa-metric-value" id="pa-time-display">0:00</span>
+              <span class="pa-metric-label">time</span>
+            </div>
+            <div class="pa-metric">
+              <span class="pa-metric-value" id="pa-accuracy-display">100%</span>
+              <span class="pa-metric-label">accuracy</span>
+            </div>
           </div>
         </div>
       </div>
@@ -240,7 +249,23 @@
       <div class="pa-complete" id="pa-complete" style="display:none;">
         <div class="pa-complete-emoji">🎵</div>
         <div class="pa-complete-title">Song Complete!</div>
-        <div class="pa-complete-score"><span id="pa-complete-score-num">0</span> <span class="pa-complete-score-label">notes played</span></div>
+        <div class="pa-complete-metrics">
+          <div class="pa-complete-metric">
+            <span class="pa-complete-metric-num" id="pa-complete-time-num">0:00.00</span>
+            <span class="pa-complete-metric-label">time</span>
+          </div>
+          <div class="pa-complete-metric">
+            <span class="pa-complete-metric-num" id="pa-complete-accuracy-num">100%</span>
+            <span class="pa-complete-metric-label">accuracy</span>
+          </div>
+        </div>
+        <div class="pa-complete-detail">
+          <span id="pa-complete-notes-num">0</span> notes played · <span id="pa-complete-misses-num">0</span> misses
+        </div>
+        <div class="recap-form" id="pa-complete-form" style="display:none;">
+          <input class="recap-name-input" id="pa-player-name" type="text" placeholder="Add name to leaderboard" maxlength="20"/>
+          <button class="recap-save-btn" id="pa-save-btn" onclick="saveToLeaderboard()">Save</button>
+        </div>
         <div class="pa-complete-buttons">
           <button class="pregame-play-btn" onclick="startPlayAlong()" style="margin:0;">Play Again</button>
           <button class="game-exit-btn" onclick="exitPlayAlong()" style="flex:0;padding:12px 20px;">Exit</button>
