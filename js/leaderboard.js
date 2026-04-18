@@ -1,7 +1,9 @@
 // ── leaderboard.js ────────────────────────────────────────────────────────
 
 const SB_URL = 'https://mgkgyzkfdnptfpnrhczu.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJtZ2tneXprZmRucHRmcG5yaGN6dSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzc1ODQ5MjgxLCJleHAiOjIwOTE0MjUyODF9.qp95iZvyI33i6jiwxXXFf0cClyg0pSNT2-3YFEII18g';
+// Supabase keys are signed tokens. Update this with the exact key from Supabase,
+// not an edited JWT payload, or the signature becomes invalid.
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1na2d5emtmZG5wdGZwbnJoY3p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NDkyODEsImV4cCI6MjA5MTQyNTI4MX0.qp95iZvyI33i6jiwxXXFf0cClyg0pSNT2-3YFEII18g';
 
 async function sbFetch(path, options = {}) {
   const res = await fetch(SB_URL + path, {
