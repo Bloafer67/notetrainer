@@ -33,6 +33,13 @@ function songLabel(songKey) {
   return SONGS?.[songKey]?.meta?.title || songKey || 'Unknown song';
 }
 
+// ── Board key helpers ─────────────────────────────────────────────────────
+function boardClefLabel(game, clefLabel, rangeMode = window.noteRangeMode) {
+  return game === 'play-along'
+    ? clefLabel
+    : `${clefLabel} · ${getDrillRangeLabel(rangeMode)}`;
+}
+
 function boardKey(e) {
   const game = e.game || 'name-the-notes';
   if (game === 'play-along') return ['play-along', 'song', e.song || e.key || 'unknown-song'].join('|');
@@ -44,7 +51,7 @@ function currentBoardKey() {
   const mode = window.gameMode || 'name-the-notes';
   if (mode === 'play-along') return ['play-along', 'song', getPlayAlongSongKey()].join('|');
   const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  return ['timed', mode, clefLabel, KEY_SIGS[keyIndex].label, gameDuration].join('|');
+  return ['timed', mode, boardClefLabel(mode, clefLabel), KEY_SIGS[keyIndex].label, gameDuration].join('|');
 }
 
 function boardLabel(key) {
@@ -146,7 +153,7 @@ function buildLeaderboardPayload(name) {
   return {
     name,
     score: result.score ?? lastScore,
-    clef: result.clef,
+    clef: boardClefLabel(result.game || 'name-the-notes', result.clef),
     key: result.key,
     game: result.game || 'name-the-notes',
     duration: result.duration ?? gameDuration,

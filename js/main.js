@@ -9,7 +9,9 @@ let darkMode = localStorage.getItem('mntr-dark') === '1';
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   setThemeIcon();
-  if (window.current) drawStaff(window.current); // re-render staff with new colours
+  if (window.current) {
+    drawStaff(window.current, { showLabel: showNoteNames && window.gameMode === 'play-the-notes' });
+  }
 }
 
 function toggleDark() {
@@ -51,6 +53,25 @@ function updateNoteNamesBtn() {
   btn.classList.toggle('hidden', !showNoteNames);
   // Toggle only affects Play the Notes — hide it in other modes
   btn.style.display = gameMode === 'play-the-notes' ? '' : 'none';
+}
+
+// ── Range toggle ───────────────────────────────────────────────────────────
+let noteRangeMode = localStorage.getItem('mntr-note-range') === 'full-range'
+  ? 'full-range'
+  : 'staff-only';
+
+function onRangeModeChange() {
+  const select = document.getElementById('range-select');
+  if (!select) return;
+  noteRangeMode = select.value === 'full-range' ? 'full-range' : 'staff-only';
+  localStorage.setItem('mntr-note-range', noteRangeMode);
+}
+
+function syncRangeModeSelect() {
+  const select = document.getElementById('range-select');
+  if (!select) return;
+  select.value = noteRangeMode;
+  window.refreshCustomSelect?.(select);
 }
 
 // ── Icon helpers ──────────────────────────────────────────────────────────
@@ -190,6 +211,7 @@ function formatElapsedMs(ms, includeFractions = false) {
 
 // Expose gameMode on window so game files can read it
 Object.defineProperty(window, 'gameMode', { get: () => gameMode });
+Object.defineProperty(window, 'noteRangeMode', { get: () => noteRangeMode });
 
 // ── Pregame show/hide ─────────────────────────────────────────────────────
 function showPregame() {
@@ -211,6 +233,7 @@ function showPregame() {
   if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
   updateNoteNamesBtn();
+  syncRangeModeSelect();
   loadBest();
 }
 
@@ -220,6 +243,7 @@ function initApp() {
   setMuteIcon();
   setThemeIcon();
   updateNoteNamesBtn();
+  syncRangeModeSelect();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
 
   // URL-based routing — /play-the-notes loads that game mode

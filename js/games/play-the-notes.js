@@ -85,21 +85,10 @@ function ptnNextQuestion() {
   ptn_smoothHz  = null;
   ptn_centsHist = [];
   document.getElementById('feedback').textContent = '';
-  const notes = ptnNoteSet();
+  const notes = getDrillNotes(clef, keyIndex, window.noteRangeMode);
   current = notes[Math.floor(Math.random() * notes.length)];
   drawStaff(current, { showLabel: showNoteNames }); // respect names toggle
   removePitchLine();
-}
-
-// ── Note set for PTN ──────────────────────────────────────────────────────
-// Guitar uses GUITAR_GAME_BASE (open-string range, manageable on staff)
-function ptnNoteSet() {
-  const base = clef === 'guitar'
-    ? GUITAR_GAME_BASE   // open-string range: E2–C4
-    : clef === 'bass'
-    ? BASS_BASE
-    : TREBLE_BASE;
-  return applyKey(base, KEY_SIGS[keyIndex].acc);
 }
 
 // ── Pitch frame ~60fps ────────────────────────────────────────────────────
@@ -189,7 +178,6 @@ function playDing() {
 }
 
 // ── Pitch line / arrows ───────────────────────────────────────────────────
-const STAFF_TOP_LINE = 35, STAFF_GAP = 12;
 const STAFF_Y_MIN = noteYPos(8, STAFF_TOP_LINE, STAFF_GAP) - STAFF_GAP * 3; // well above
 const STAFF_Y_MAX = noteYPos(0, STAFF_TOP_LINE, STAFF_GAP) + STAFF_GAP * 3; // well below
 
@@ -209,7 +197,7 @@ function updatePitchLineOrArrow(hz, color) {
   if (rawY === null) return;
 
   const ns = 'http://www.w3.org/2000/svg';
-  const svgHeight = 130; // matches viewBox "0 0 340 130"
+  const svgHeight = STAFF_VIEWBOX_HEIGHT;
   const margin = 8;
 
   if (rawY < margin) {
@@ -305,9 +293,7 @@ function hzToStaffY(hz) {
   if (!hz) return null;
   const topLine = STAFF_TOP_LINE, gap = STAFF_GAP;
 
-  // Use full guitar range for mapping when in guitar mode
-  const base  = clef === 'guitar' ? GUITAR_BASE : clef === 'bass' ? BASS_BASE : TREBLE_BASE;
-  const notes = applyKey(base, KEY_SIGS[keyIndex].acc);
+  const notes = getDrillNotes(clef, keyIndex, window.noteRangeMode);
   const loNote = notes[0];
   const hiNote = notes[notes.length - 1];
 

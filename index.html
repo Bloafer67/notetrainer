@@ -77,7 +77,16 @@
               <option value="guitar">Guitar (8vb)</option>
             </select>
             <div class="info-nub">i
-              <div class="info-tooltip">Treble covers E4–F5. Bass covers G2–A3. Guitar (8vb) reads like treble but sounds an octave lower.</div>
+              <div class="info-tooltip">Treble reads standard notation. Bass reads lower notation. Guitar (8vb) reads like treble but sounds an octave lower.</div>
+            </div>
+          </div>
+          <div class="pregame-selectors-row">
+            <select class="pregame-select" id="range-select" onchange="onRangeModeChange()">
+              <option value="staff-only">Staff Only</option>
+              <option value="full-range">Full Range</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">Staff Only keeps notes on the five-line staff. Full Range adds ledger lines above and below.</div>
             </div>
           </div>
           <div class="pregame-selectors-row">
@@ -163,7 +172,7 @@
             <span id="mic-status-text">Listening…</span>
           </div>
           <button class="note-names-toggle" id="note-names-toggle" onclick="toggleNoteNames()">Names</button>
-          <svg id="staff-svg" viewBox="0 0 340 130" xmlns="http://www.w3.org/2000/svg"></svg>
+          <svg id="staff-svg" viewBox="0 0 340 170" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
 
         <!-- Tuner inset — Play the Notes only -->
