@@ -1,7 +1,7 @@
 // ── games/name-the-notes.js ───────────────────────────────────────────────
 // Handles: all Name the Notes game state and logic
-// Depends on: KEY_SIGS, TREBLE_BASE, BASS_BASE, GUITAR_BASE, applyKey (staff.js)
-//             drawStaff (staff.js), playNote (audio/synth.js)
+// Depends on: KEY_SIGS, getDrillNotes(), getDrillRangeLabel(), drawStaff()
+//             playNote (audio/synth.js)
 //             showToast, showAnswerToast, setTimerIcon, setTimerDisplay,
 //             toMMSS, showPregame (main.js)
 //             saveToLeaderboard, fetchLeaderboard (leaderboard.js)
@@ -43,7 +43,7 @@ function initNameTheNotes() {
 }
 
 function bestKey() {
-  return 'mntr3-best-' + KEY_SIGS[keyIndex].short + '-' + clef;
+  return 'mntr3-best-' + KEY_SIGS[keyIndex].short + '-' + clef + '-' + window.noteRangeMode;
 }
 
 function loadBest() {
@@ -202,12 +202,7 @@ function endGame() {
 
 // ── Note question logic ───────────────────────────────────────────────────
 function noteSet() {
-  const base = clef === 'bass'
-    ? BASS_BASE
-    : clef === 'guitar'
-    ? GUITAR_GAME_BASE   // manageable subset for NTN tap game
-    : TREBLE_BASE;
-  return applyKey(base, KEY_SIGS[keyIndex].acc);
+  return getDrillNotes(clef, keyIndex, window.noteRangeMode);
 }
 
 function nextQuestion() {
@@ -313,7 +308,7 @@ function shareScore() {
   const clefLabel = clef === 'guitar'
     ? 'Guitar (8vb)'
     : clef.charAt(0).toUpperCase() + clef.slice(1);
-  const text = `🎼 Name the Notes\n⭐ ${lastScore} notes in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel}\nhttps://notetrainer-eight.vercel.app`;
+  const text = `🎼 Name the Notes\n⭐ ${lastScore} notes in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel} · ${getDrillRangeLabel(window.noteRangeMode)}\nhttps://notetrainer-eight.vercel.app`;
   if (navigator.share) {
     navigator.share({ text }).catch(() => {});
   } else {

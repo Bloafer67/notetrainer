@@ -23,6 +23,13 @@ let lbHighlightId  = null;
 let lbSelectedKey  = null; // currently viewed board key
 
 // ── Board key helpers ─────────────────────────────────────────────────────
+function currentClefBoardLabel() {
+  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
+  return (window.gameMode || 'name-the-notes') === 'play-along'
+    ? clefLabel
+    : clefLabel + ' · ' + getDrillRangeLabel(window.noteRangeMode);
+}
+
 function boardKey(e) {
   // Handle both 'duration' (new) and 'Duration' (old capitalised column name)
   const dur = e.duration ?? e.Duration ?? 60;
@@ -30,8 +37,7 @@ function boardKey(e) {
 }
 
 function currentBoardKey() {
-  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  return [window.gameMode||'name-the-notes', clefLabel, KEY_SIGS[keyIndex].label, gameDuration].join('|');
+  return [window.gameMode||'name-the-notes', currentClefBoardLabel(), KEY_SIGS[keyIndex].label, gameDuration].join('|');
 }
 
 function boardLabel(key) {
@@ -44,7 +50,6 @@ async function saveToLeaderboard() {
   const nameEl  = document.getElementById('player-name');
   const name    = nameEl.value.trim() || 'Anonymous';
   localStorage.setItem('mntr-playername', name);
-  const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
   const saveBtn = document.getElementById('save-btn');
   saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
   try {
@@ -52,7 +57,7 @@ async function saveToLeaderboard() {
       method: 'POST', prefer: 'return=representation',
       body: JSON.stringify({
         name, score: lastScore,
-        clef: clefLabel, key: KEY_SIGS[keyIndex].label,
+        clef: currentClefBoardLabel(), key: KEY_SIGS[keyIndex].label,
         game: window.gameMode || 'name-the-notes',
         duration: gameDuration,
         Duration: gameDuration, // backwards compat with old capitalised column

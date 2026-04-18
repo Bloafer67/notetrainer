@@ -22,18 +22,40 @@ const KS_POSITIONS = {
   bass:   { sharps:[6,3,7,4,1,5,2], flats:[2,5,1,4,0,3,6] },
 };
 
-// ── Note sets ─────────────────────────────────────────────────────────────
-// Treble: E4 (step 0) through F5 (step 8)
-const TREBLE_BASE = [
+// ── Drill note sets ───────────────────────────────────────────────────────
+// Step 0 = bottom line for the active clef. Staff-only keeps notes on the
+// 5-line staff; full-range adds ledger lines above and below.
+const TREBLE_STAFF_BASE = [
   {name:'E4',step:0},{name:'F4',step:1},{name:'G4',step:2},{name:'A4',step:3},
   {name:'B4',step:4},{name:'C5',step:5},{name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},
 ];
 
-// Bass: G2 (step 0) through A3 (step 8)
-const BASS_BASE = [
+const TREBLE_FULL_BASE = [
+  {name:'F3',step:-6},{name:'G3',step:-5},{name:'A3',step:-4},{name:'B3',step:-3},
+  {name:'C4',step:-2},{name:'D4',step:-1},{name:'E4',step:0},{name:'F4',step:1},
+  {name:'G4',step:2},{name:'A4',step:3},{name:'B4',step:4},{name:'C5',step:5},
+  {name:'D5',step:6},{name:'E5',step:7},{name:'F5',step:8},{name:'G5',step:9},
+  {name:'A5',step:10},{name:'B5',step:11},{name:'C6',step:12},{name:'D6',step:13},
+  {name:'E6',step:14},
+];
+
+const TREBLE_BASE = TREBLE_STAFF_BASE;
+
+const BASS_STAFF_BASE = [
   {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
   {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
 ];
+
+const BASS_FULL_BASE = [
+  {name:'A1',step:-6},{name:'B1',step:-5},{name:'C2',step:-4},{name:'D2',step:-3},
+  {name:'E2',step:-2},{name:'F2',step:-1},{name:'G2',step:0},{name:'A2',step:1},
+  {name:'B2',step:2},{name:'C3',step:3},{name:'D3',step:4},{name:'E3',step:5},
+  {name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},{name:'B3',step:9},
+  {name:'C4',step:10},{name:'D4',step:11},{name:'E4',step:12},{name:'F4',step:13},
+  {name:'G4',step:14},
+];
+
+const BASS_BASE = BASS_STAFF_BASE;
 
 // Guitar 8vb: treble clef + "8" underneath.
 // Notes are written at treble positions but sound one octave lower.
@@ -48,7 +70,7 @@ const BASS_BASE = [
 //   G:     written G4 (step  2), sounds G3 (196Hz)
 //   B:     written B4 (step  4), sounds B3 (247Hz)  ← middle line!
 //   Hi E:  written E5 (step  7), sounds E4 (330Hz)
-const GUITAR_BASE = [
+const GUITAR_FULL_BASE = [
   {name:'E3', step:-7, soundName:'E2'},
   {name:'F3', step:-6, soundName:'F2'},
   {name:'G3', step:-5, soundName:'G2'},
@@ -66,10 +88,16 @@ const GUITAR_BASE = [
   {name:'E5', step:7,  soundName:'E4'},
   {name:'F5', step:8,  soundName:'F4'},
   {name:'G5', step:9,  soundName:'G4'},
+  {name:'A5', step:10, soundName:'A4'},
+  {name:'B5', step:11, soundName:'B4'},
+  {name:'C6', step:12, soundName:'C5'},
+  {name:'D6', step:13, soundName:'D5'},
+  {name:'E6', step:14, soundName:'E5'},
 ];
 
-// Subset for Name the Notes — open strings + nearby notes, all on/near the staff
-const GUITAR_GAME_BASE = [
+const GUITAR_BASE = GUITAR_FULL_BASE;
+
+const GUITAR_STAFF_BASE = [
   {name:'A3', step:-4, soundName:'A2'},
   {name:'B3', step:-3, soundName:'B2'},
   {name:'C4', step:-2, soundName:'C3'},
@@ -83,6 +111,42 @@ const GUITAR_GAME_BASE = [
   {name:'D5', step:6,  soundName:'D4'},
   {name:'E5', step:7,  soundName:'E4'},
 ];
+
+const GUITAR_GAME_BASE = GUITAR_STAFF_BASE;
+
+const DRILL_RANGE_MODES = {
+  'staff-only': { label:'Staff Only' },
+  'full-range': { label:'Full Range' },
+};
+
+const DRILL_NOTE_BASES = {
+  treble: {
+    'staff-only': TREBLE_STAFF_BASE,
+    'full-range': TREBLE_FULL_BASE,
+  },
+  bass: {
+    'staff-only': BASS_STAFF_BASE,
+    'full-range': BASS_FULL_BASE,
+  },
+  guitar: {
+    'staff-only': GUITAR_STAFF_BASE,
+    'full-range': GUITAR_FULL_BASE,
+  },
+};
+
+function getDrillBaseNotes(clefName, rangeMode = 'staff-only') {
+  const byClef = DRILL_NOTE_BASES[clefName] || DRILL_NOTE_BASES.treble;
+  return byClef[rangeMode] || byClef['staff-only'];
+}
+
+function getDrillNotes(clefName, keySigIndex, rangeMode = 'staff-only') {
+  const keySig = KEY_SIGS[keySigIndex] || KEY_SIGS[0];
+  return applyKey(getDrillBaseNotes(clefName, rangeMode), keySig.acc);
+}
+
+function getDrillRangeLabel(rangeMode) {
+  return DRILL_RANGE_MODES[rangeMode]?.label || DRILL_RANGE_MODES['staff-only'].label;
+}
 
 function applyKey(base, acc) {
   return base.map(n => {
@@ -103,6 +167,11 @@ function applyKey(base, acc) {
 }
 
 // Convert staff step → SVG y coordinate
+const STAFF_VIEWBOX_WIDTH = 340;
+const STAFF_VIEWBOX_HEIGHT = 170;
+const STAFF_TOP_LINE = 50;
+const STAFF_GAP = 12;
+
 function noteYPos(step, topLine, gap) {
   return topLine + 4 * gap - step * (gap / 2);
 }
@@ -111,8 +180,10 @@ function noteYPos(step, topLine, gap) {
 function drawStaff(note, opts = {}) {
   const svg = document.getElementById('staff-svg');
   svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${STAFF_VIEWBOX_WIDTH} ${STAFF_VIEWBOX_HEIGHT}`);
 
-  const topLine = 35, gap = 12; // moved topLine down a bit to give room above staff
+  const topLine = STAFF_TOP_LINE;
+  const gap = STAFF_GAP;
   const ns = 'http://www.w3.org/2000/svg';
 
   const lineCol   = darkMode ? '#666' : '#888';
@@ -198,7 +269,8 @@ function drawStaff(note, opts = {}) {
 
   // Note name label (shown in PTN mode or if opts.showLabel)
   if (opts.showLabel) {
-    const labelY = stemUp ? cy + r + 14 : cy - r - 6;
+    const preferredLabelY = stemUp ? cy + r + 14 : cy - r - 6;
+    const labelY = Math.max(12, Math.min(STAFF_VIEWBOX_HEIGHT - 10, preferredLabelY));
     svg.appendChild(el('text', {
       x:noteCx, y:labelY,
       'font-size':'11', 'font-weight':'600',

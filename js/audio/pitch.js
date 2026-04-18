@@ -97,7 +97,7 @@ function detectPitch(buf, sampleRate) {
   const hz = sampleRate / refinedPos;
 
   // Clamp to human vocal + instrument range
-  if (hz < 60 || hz > 1200) return null;
+  if (hz < 60 || hz > 1500) return null;
   return hz;
 }
 
