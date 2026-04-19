@@ -56,11 +56,10 @@ function detectLoop() {
 function detectPitch(buf, sampleRate) {
   const SIZE = buf.length;
 
-  // RMS signal check — 0.003 is much more sensitive than the old 0.01
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.003) return null;
+  if (rms < 0.006) return null;
 
   // Autocorrelation
   const corr = new Float32Array(SIZE);
@@ -83,8 +82,7 @@ function detectPitch(buf, sampleRate) {
     if (corr[i] > maxVal) { maxVal = corr[i]; maxPos = i; }
   }
 
-  // Reject weak correlations (noisy signal)
-  if (maxVal < corr[0] * 0.4) return null;
+  if (maxVal < corr[0] * 0.6) return null;
   if (maxPos < 2) return null;
 
   // Parabolic interpolation for smoother frequency

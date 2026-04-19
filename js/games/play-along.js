@@ -3,8 +3,8 @@
 // detects mic pitch, and advances the cursor note by note.
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const PA_HIT_CENTS   = 80;
-const PA_HIT_HOLD_MS = 180;
+const PA_HIT_CENTS   = 40;
+const PA_HIT_HOLD_MS = 240;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let pa_active        = false;
