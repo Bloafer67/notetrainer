@@ -314,6 +314,16 @@ function pa_noteIsRest(note) {
   return !note || !note.Pitch || (typeof note.isRest === 'function' && note.isRest());
 }
 
+// True when the current note ties *into* the next note — the player is
+// expected to sustain, not re-attack, so lingering ring should count.
+function pa_currentNoteTiesForward() {
+  const note = pa_currentNote();
+  const tie = note && (note.NoteTie || note.noteTie);
+  const tied = tie && (tie.Notes || tie.notes);
+  if (!tied || tied.length < 2) return false;
+  return tied[tied.length - 1] !== note;
+}
+
 function pa_skipRestsAndEmpty() {
   while (!pa_cursorEnded()) {
     const note = pa_currentNote();
@@ -526,9 +536,10 @@ function pa_onNoteHit() {
 }
 
 function pa_advance() {
+  const tiesForward = pa_currentNoteTiesForward();
   paClearHitTimer();
   paClearWrongTimer(true);
-  pa_hitArmed = false;
+  pa_hitArmed = tiesForward;
   pa_osmd.cursor.next();
   pa_skipRestsAndEmpty();
   if (pa_cursorEnded()) {
