@@ -226,6 +226,15 @@ function nextQuestion() {
   playNote(current.actualName);
 }
 
+function refreshChoiceButtonColors() {
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    const palette = getNotePalette(btn.dataset.name);
+    btn.style.setProperty('--choice-btn-bg', palette.buttonBg);
+    btn.style.setProperty('--choice-btn-text', palette.buttonText);
+    btn.style.setProperty('--choice-btn-border', palette.noteStroke);
+  });
+}
+
 function buildChoices(correct, notes) {
   const pool = notes
     .filter(n => n.name !== correct.name)
@@ -242,6 +251,7 @@ function buildChoices(correct, notes) {
     btn.onclick = () => checkAnswer(note.name, btn);
     c.appendChild(btn);
   });
+  refreshChoiceButtonColors();
 }
 
 function checkAnswer(chosen, btn) {
@@ -276,6 +286,8 @@ function checkAnswer(chosen, btn) {
 
   setTimeout(() => { if (gameActive && !paused) nextQuestion(); }, 600);
 }
+
+window.refreshChoiceButtonColors = refreshChoiceButtonColors;
 
 // ── Confetti ──────────────────────────────────────────────────────────────
 function launchConfetti() {

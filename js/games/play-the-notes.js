@@ -12,6 +12,14 @@ let ptn_hitTimer  = null;
 let ptn_smoothHz  = null;
 let ptn_centsHist = []; // rolling window of cents for tuner display
 
+function ptnGuideColor(hz = ptn_smoothHz) {
+  if (!current) return getNotePalette(null).pitch;
+  if (!hz) return getNotePalette(current.name).pitch;
+  const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
+  const cents = targetHz ? Math.abs(1200 * Math.log2(hz / targetHz)) : 999;
+  return cents <= HIT_THRESHOLD_CENTS ? '#1D9E75' : getNotePalette(current.name).pitch;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 function initPlayTheNotes() {}
 
@@ -105,14 +113,7 @@ function onPitchFrame(hz) {
   }
 
   // Update pitch line (with arrow if out of range) — color by proximity
-  if (ptn_smoothHz && current) {
-    const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
-    const cents = targetHz ? Math.abs(1200 * Math.log2(ptn_smoothHz / targetHz)) : 999;
-    const inRange = cents <= HIT_THRESHOLD_CENTS;
-    updatePitchLineOrArrow(ptn_smoothHz, inRange ? '#1D9E75' : '#185FA5');
-  } else {
-    updatePitchLineOrArrow(ptn_smoothHz, '#185FA5');
-  }
+  updatePitchLineOrArrow(ptn_smoothHz, ptnGuideColor(ptn_smoothHz));
 
   if (!hz || !current) {
     if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
@@ -247,7 +248,9 @@ function flashPitchLineGreen() {
   const line = document.getElementById('pitch-line');
   if (!line) return;
   line.setAttribute('stroke', '#3B6D11');
-  setTimeout(() => { if (line.parentNode) line.setAttribute('stroke', '#185FA5'); }, 400);
+  setTimeout(() => {
+    if (line.parentNode) line.setAttribute('stroke', ptnGuideColor());
+  }, 400);
 }
 
 // ── Tuner inset ───────────────────────────────────────────────────────────
@@ -312,3 +315,8 @@ function hzToStaffY(hz) {
   const yTop    = noteYPos(hiNote.step, topLine, gap);
   return yBottom + (yTop - yBottom) * t;
 }
+
+window.refreshPitchGuideColors = () => {
+  if (!ptn_active) return;
+  updatePitchLineOrArrow(ptn_smoothHz, ptnGuideColor(ptn_smoothHz));
+};

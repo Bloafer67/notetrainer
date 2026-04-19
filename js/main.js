@@ -5,19 +5,37 @@
 
 // ── Theme ─────────────────────────────────────────────────────────────────
 let darkMode = localStorage.getItem('mntr-dark') === '1';
+let boomwhackerMode = localStorage.getItem('mntr-boomwhacker') === '1';
+
+function refreshNotationColors() {
+  if (window.current) {
+    drawStaff(window.current, {
+      showLabel: showNoteNames && window.gameMode === 'play-the-notes',
+    });
+  }
+  window.refreshChoiceButtonColors?.();
+  window.refreshPitchGuideColors?.();
+  window.refreshPlayAlongPitchColors?.();
+}
 
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   setThemeIcon();
-  if (window.current) {
-    drawStaff(window.current, { showLabel: showNoteNames && window.gameMode === 'play-the-notes' });
-  }
+  updateBoomwhackerBtn();
+  refreshNotationColors();
 }
 
 function toggleDark() {
   darkMode = !darkMode;
   localStorage.setItem('mntr-dark', darkMode ? '1' : '0');
   applyTheme();
+}
+
+function toggleBoomwhackerMode() {
+  boomwhackerMode = !boomwhackerMode;
+  localStorage.setItem('mntr-boomwhacker', boomwhackerMode ? '1' : '0');
+  updateBoomwhackerBtn();
+  refreshNotationColors();
 }
 
 // ── Mute ──────────────────────────────────────────────────────────────────
@@ -53,6 +71,14 @@ function updateNoteNamesBtn() {
   btn.classList.toggle('hidden', !showNoteNames);
   // Toggle only affects Play the Notes — hide it in other modes
   btn.style.display = gameMode === 'play-the-notes' ? '' : 'none';
+}
+
+function updateBoomwhackerBtn() {
+  const btn = document.getElementById('boomwhacker-toggle');
+  if (!btn) return;
+  btn.classList.toggle('active', boomwhackerMode);
+  btn.setAttribute('aria-pressed', boomwhackerMode ? 'true' : 'false');
+  btn.title = boomwhackerMode ? 'Boomwhacker colors: on' : 'Boomwhacker colors: off';
 }
 
 // ── Range toggle ───────────────────────────────────────────────────────────
@@ -217,6 +243,7 @@ function formatElapsedMs(ms, includeFractions = false) {
 // Expose gameMode on window so game files can read it
 Object.defineProperty(window, 'gameMode', { get: () => gameMode });
 Object.defineProperty(window, 'noteRangeMode', { get: () => noteRangeMode });
+Object.defineProperty(window, 'boomwhackerMode', { get: () => boomwhackerMode });
 
 // ── Pregame show/hide ─────────────────────────────────────────────────────
 function showPregame() {
@@ -247,6 +274,7 @@ function initApp() {
   applyTheme();
   setMuteIcon();
   setThemeIcon();
+  updateBoomwhackerBtn();
   updateNoteNamesBtn();
   syncRangeModeSelect();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
