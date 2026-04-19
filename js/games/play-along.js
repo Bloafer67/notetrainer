@@ -15,7 +15,6 @@ let pa_hitTimer      = null;
 let pa_wrongTimer    = null;
 let pa_wrongArmed    = true;
 let pa_smoothHz      = null;
-let pa_nashville     = false;
 let pa_correctNotes  = 0;
 let pa_wrongAttempts = 0;
 let pa_elapsedMs     = 0;
@@ -491,11 +490,4 @@ function pa_onSongComplete() {
   }
 
   if (typeof launchConfetti === 'function') setTimeout(launchConfetti, 100);
-}
-
-// ── Nashville toggle ──────────────────────────────────────────────────────
-function toggleNashville() {
-  pa_nashville = !pa_nashville;
-  const btn = document.getElementById('pa-nashville-btn');
-  if (btn) btn.classList.toggle('active', pa_nashville);
 }

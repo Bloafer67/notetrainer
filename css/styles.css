@@ -650,17 +650,6 @@ details[open] summary::after { content: '▾'; }
 .pa-metric-label {
   font-size: 10px; color: var(--text3); letter-spacing: 0.03em;
 }
-.pa-nashville-btn {
-  font-size: 11px; font-weight: 500; font-family: inherit;
-  padding: 3px 10px; border-radius: 999px; cursor: pointer;
-  border: 0.5px solid var(--border2); background: transparent;
-  color: var(--text3); transition: background 0.15s;
-}
-.pa-nashville-btn:hover { background: var(--surface2); color: var(--text2); }
-.pa-nashville-btn.active {
-  background: var(--primary-light); color: var(--primary-text);
-  border-color: var(--primary);
-}
 .pa-feedback {
   min-height: 20px; font-size: 14px; font-weight: 500;
   color: var(--text3); text-align: center;

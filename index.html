@@ -102,7 +102,7 @@
         </div>
         <button class="pregame-play-btn" onclick="startGame()">Play</button>
 
-        <!-- Play Along extra selectors (song + nashville toggle) -->
+        <!-- Play Along extra selectors (song) -->
         <div id="pa-pregame-selectors" style="display:none;" class="pregame-selectors">
           <div class="pregame-selectors-row">
             <select class="pregame-select" id="pa-song-select"></select>
@@ -212,14 +212,13 @@
     <!-- ── Play Along active panel ── -->
     <div id="pa-active" style="display:none; flex-direction:column; gap:12px;">
 
-      <!-- Header row: song title + score + nashville toggle -->
+      <!-- Header row: song title + score -->
       <div class="pa-header">
         <div class="pa-title-wrap">
           <div class="pa-title" id="pa-title">Dink's Song</div>
           <div class="pa-subline" id="pa-subline">Finish the song. Time counts up.</div>
         </div>
         <div class="pa-header-controls">
-          <button class="pa-nashville-btn" id="pa-nashville-btn" onclick="toggleNashville()">Nashville</button>
           <div class="pa-metrics">
             <div class="pa-metric">
               <span class="pa-metric-value" id="pa-time-display">0:00</span>
