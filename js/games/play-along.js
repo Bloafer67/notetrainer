@@ -14,6 +14,7 @@ let pa_osmd          = null;
 let pa_hitTimer      = null;
 let pa_wrongTimer    = null;
 let pa_wrongArmed    = true;
+let pa_hitArmed      = true;
 let pa_smoothHz      = null;
 let pa_correctNotes  = 0;
 let pa_wrongAttempts = 0;
@@ -87,6 +88,7 @@ function paResetRoundState() {
   pa_elapsedMs = 0;
   pa_startedAt = performance.now();
   pa_wrongArmed = true;
+  pa_hitArmed = true;
   paClearHitTimer();
   paClearWrongTimer();
   clearInterval(pa_timerInterval);
@@ -474,6 +476,7 @@ function pa_onPitchFrame(hz) {
     pa_updatePitchOverlay(null, false);
     paClearHitTimer();
     paClearWrongTimer(true);
+    pa_hitArmed = true;
     return;
   }
 
@@ -490,7 +493,7 @@ function pa_onPitchFrame(hz) {
 
   if (inRange) {
     paClearWrongTimer(true);
-    if (!pa_hitTimer) {
+    if (pa_hitArmed && !pa_hitTimer) {
       pa_hitTimer = setTimeout(() => {
         pa_hitTimer = null;
         pa_onNoteHit();
@@ -499,6 +502,7 @@ function pa_onPitchFrame(hz) {
     return;
   }
 
+  pa_hitArmed = true;
   paClearHitTimer();
   if (pa_wrongArmed && !pa_wrongTimer) {
     pa_wrongTimer = setTimeout(() => {
@@ -524,6 +528,7 @@ function pa_onNoteHit() {
 function pa_advance() {
   paClearHitTimer();
   paClearWrongTimer(true);
+  pa_hitArmed = false;
   pa_osmd.cursor.next();
   pa_skipRestsAndEmpty();
   if (pa_cursorEnded()) {
