@@ -287,6 +287,15 @@ function pa_currentTargetHz() {
   return hz || null;
 }
 
+function pa_currentDisplayNoteName() {
+  const note = pa_currentNote();
+  const pitch = note?.Pitch;
+  if (!pitch) return '';
+  const NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const accMap = { 1: '#', 2: '##', '-1': 'b', '-2': 'bb' };
+  return `${NAMES[pitch.FundamentalNote]}${accMap[pitch.AccidentalHalfTones] || ''}${pitch.Octave}`;
+}
+
 function pa_scrollToCursor() {
   const container = document.getElementById('pa-osmd-container');
   const cEl = pa_osmd?.cursor?.cursorElement;
@@ -345,7 +354,7 @@ function pa_updatePitchOverlay(hz, inRange) {
     centerX = cRect.left + cRect.width / 2 - wRect.left;
   }
 
-  const color = inRange ? '#1D9E75' : '#185FA5';
+  const color = inRange ? '#1D9E75' : getNotePalette(pa_currentDisplayNoteName()).pitch;
   const half = 40;
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.setAttribute('x1', centerX - half);
@@ -491,3 +500,14 @@ function pa_onSongComplete() {
 
   if (typeof launchConfetti === 'function') setTimeout(launchConfetti, 100);
 }
+
+window.refreshPlayAlongPitchColors = () => {
+  if (!pa_active) return;
+  const targetHz = pa_currentTargetHz();
+  if (!targetHz || !pa_smoothHz) {
+    pa_updatePitchOverlay(pa_smoothHz, false);
+    return;
+  }
+  const cents = Math.abs(1200 * Math.log2(pa_smoothHz / targetHz));
+  pa_updatePitchOverlay(pa_smoothHz, cents <= PA_HIT_CENTS);
+};

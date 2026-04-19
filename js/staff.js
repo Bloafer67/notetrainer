@@ -176,6 +176,39 @@ function noteYPos(step, topLine, gap) {
   return topLine + 4 * gap - step * (gap / 2);
 }
 
+const BOOMWHACKER_PALETTE = {
+  C: { noteFill:'#F15B5B', noteStroke:'#A52B2B', label:'#A52B2B', buttonBg:'#F15B5B', buttonText:'#FFFFFF', pitch:'#D94848' },
+  D: { noteFill:'#F59D3D', noteStroke:'#B45C05', label:'#9A4F00', buttonBg:'#F59D3D', buttonText:'#FFFFFF', pitch:'#D47F1F' },
+  E: { noteFill:'#F8D64E', noteStroke:'#9B7700', label:'#856600', buttonBg:'#F8D64E', buttonText:'#4F3C00', pitch:'#D1AF21' },
+  F: { noteFill:'#62BA63', noteStroke:'#1F7A30', label:'#1F7A30', buttonBg:'#62BA63', buttonText:'#FFFFFF', pitch:'#44A146' },
+  G: { noteFill:'#2FC2E8', noteStroke:'#0C78A6', label:'#0C78A6', buttonBg:'#2FC2E8', buttonText:'#FFFFFF', pitch:'#1AA5CD' },
+  A: { noteFill:'#4F7CFF', noteStroke:'#2149A6', label:'#2149A6', buttonBg:'#4F7CFF', buttonText:'#FFFFFF', pitch:'#3E68E1' },
+  B: { noteFill:'#AE63D7', noteStroke:'#6D338D', label:'#6D338D', buttonBg:'#AE63D7', buttonText:'#FFFFFF', pitch:'#924DC0' },
+};
+
+function getNoteLetter(noteOrName) {
+  const name = typeof noteOrName === 'string'
+    ? noteOrName
+    : noteOrName?.name || noteOrName?.actualName || '';
+  return String(name).charAt(0).toUpperCase();
+}
+
+function getNotePalette(noteOrName) {
+  const monoPitch = darkMode ? '#378ADD' : '#185FA5';
+  const monoNote = darkMode ? '#e0dfd8' : '#1a1a18';
+  const monoLabel = darkMode ? '#6FB6FF' : '#185FA5';
+  const mono = {
+    noteFill: monoNote,
+    noteStroke: monoNote,
+    label: monoLabel,
+    buttonBg: monoPitch,
+    buttonText: '#FFFFFF',
+    pitch: monoPitch,
+  };
+  if (!window.boomwhackerMode) return mono;
+  return BOOMWHACKER_PALETTE[getNoteLetter(noteOrName)] || mono;
+}
+
 // ── Draw staff ────────────────────────────────────────────────────────────
 function drawStaff(note, opts = {}) {
   const svg = document.getElementById('staff-svg');
@@ -189,8 +222,8 @@ function drawStaff(note, opts = {}) {
   const lineCol   = darkMode ? '#666' : '#888';
   const clefCol   = darkMode ? '#aaa' : '#666';
   const ledgerCol = darkMode ? '#999' : '#444';
-  const noteCol   = darkMode ? '#e0dfd8' : '#1a1a18';
   const accCol    = darkMode ? '#aaa' : '#444';
+  const notePalette = getNotePalette(note);
 
   function el(tag, attrs, text) {
     const e = document.createElementNS(ns, tag);
@@ -250,21 +283,23 @@ function drawStaff(note, opts = {}) {
     }));
   });
 
-  // Note head
-  svg.appendChild(el('ellipse', {
-    cx:noteCx, cy,
-    rx:r, ry:Math.round(r*0.72),
-    fill:noteCol,
-    transform:`rotate(-15,${noteCx},${cy})`,
-  }));
-
   // Stem
   const stemUp = note.step < 4;
   svg.appendChild(el('line', {
     x1:stemUp?noteCx+r-1:noteCx-r+1,
     x2:stemUp?noteCx+r-1:noteCx-r+1,
     y1:cy, y2:stemUp?cy-32:cy+32,
-    stroke:noteCol,'stroke-width':'1.5',
+    stroke:notePalette.noteStroke,'stroke-width':'1.5',
+  }));
+
+  // Note head sits above the stem so the overlap reads cleanly.
+  svg.appendChild(el('ellipse', {
+    cx:noteCx, cy,
+    rx:r, ry:Math.round(r*0.72),
+    fill:notePalette.noteFill,
+    stroke:notePalette.noteStroke,
+    'stroke-width':'1.2',
+    transform:`rotate(-15,${noteCx},${cy})`,
   }));
 
   // Note name label (shown in PTN mode or if opts.showLabel)
@@ -274,7 +309,7 @@ function drawStaff(note, opts = {}) {
     svg.appendChild(el('text', {
       x:noteCx, y:labelY,
       'font-size':'11', 'font-weight':'600',
-      fill:'#185FA5', 'text-anchor':'middle',
+      fill:notePalette.label, 'text-anchor':'middle',
       'font-family':'-apple-system,BlinkMacSystemFont,sans-serif',
     }, note.name));
   }
@@ -298,7 +333,7 @@ function drawBurst(notes, currentIndex) {
   const ledgerCol    = darkMode ? '#999' : '#444';
   const noteColIdle  = darkMode ? '#e0dfd8' : '#1a1a18';
   const noteColDone  = darkMode ? '#3B6D11' : '#639922';
-  const noteColCurr  = '#185FA5';
+  const noteColCurr  = getNotePalette(notes[currentIndex]).pitch;
   const accCol       = darkMode ? '#aaa' : '#444';
 
   function el(tag, attrs, text) {
@@ -352,10 +387,19 @@ function drawBurst(notes, currentIndex) {
       : startX + (endX - startX) * (idx / (count - 1));
     const cy = noteYPos(note.step, topLine, gap);
 
-    let fillCol = noteColIdle;
+    const notePalette = getNotePalette(note);
+    let fillCol = window.boomwhackerMode ? notePalette.noteFill : noteColIdle;
+    let strokeCol = window.boomwhackerMode ? notePalette.noteStroke : fillCol;
     let opacity = '0.4';
-    if (idx === currentIndex) { fillCol = noteColCurr; opacity = '1'; }
-    else if (idx < currentIndex) { fillCol = noteColDone; opacity = '0.85'; }
+    if (idx === currentIndex) {
+      fillCol = noteColCurr;
+      strokeCol = window.boomwhackerMode ? notePalette.noteStroke : noteColCurr;
+      opacity = '1';
+    } else if (idx < currentIndex) {
+      fillCol = noteColDone;
+      strokeCol = noteColDone;
+      opacity = '0.85';
+    }
 
     // Ledger lines
     const ledgerSteps = [];
@@ -369,21 +413,23 @@ function drawBurst(notes, currentIndex) {
       }));
     });
 
-    // Note head
-    svg.appendChild(el('ellipse', {
-      cx:noteCx, cy,
-      rx:r, ry:Math.round(r*0.72),
-      fill:fillCol, opacity,
-      transform:`rotate(-15,${noteCx},${cy})`,
-    }));
-
     // Stem
     const stemUp = note.step < 4;
     svg.appendChild(el('line', {
       x1:stemUp?noteCx+r-1:noteCx-r+1,
       x2:stemUp?noteCx+r-1:noteCx-r+1,
       y1:cy, y2:stemUp?cy-32:cy+32,
-      stroke:fillCol,'stroke-width':'1.5', opacity,
+      stroke:strokeCol,'stroke-width':'1.5', opacity,
+    }));
+
+    svg.appendChild(el('ellipse', {
+      cx:noteCx, cy,
+      rx:r, ry:Math.round(r*0.72),
+      fill:fillCol,
+      stroke:strokeCol,
+      'stroke-width':'1.2',
+      opacity,
+      transform:`rotate(-15,${noteCx},${cy})`,
     }));
   });
 }

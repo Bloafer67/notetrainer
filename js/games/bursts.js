@@ -13,6 +13,15 @@ let bursts_hitTimer = null;
 let bursts_notes    = [];
 let bursts_index    = 0;
 
+function burstsGuideColor(hz = bursts_smoothHz) {
+  const target = bursts_notes[bursts_index];
+  if (!target) return getNotePalette(null).pitch;
+  if (!hz) return getNotePalette(target.name).pitch;
+  const targetHz = NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name];
+  const cents = targetHz ? Math.abs(1200 * Math.log2(hz / targetHz)) : 999;
+  return cents <= BURSTS_HIT_CENTS ? '#1D9E75' : getNotePalette(target.name).pitch;
+}
+
 // Expose to window so main.js applyTheme can redraw on theme change
 Object.defineProperties(window, {
   burstNotes: { get: () => bursts_notes },
@@ -114,14 +123,7 @@ function onBurstsPitchFrame(hz) {
   }
 
   const target = bursts_notes[bursts_index];
-  if (bursts_smoothHz && target) {
-    const targetHz = NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name];
-    const cents = targetHz ? Math.abs(1200 * Math.log2(bursts_smoothHz / targetHz)) : 999;
-    const inRange = cents <= BURSTS_HIT_CENTS;
-    updatePitchLineOrArrow(bursts_smoothHz, inRange ? '#1D9E75' : '#185FA5');
-  } else {
-    updatePitchLineOrArrow(bursts_smoothHz, '#185FA5');
-  }
+  updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
 
   if (!hz || !target) {
     if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
@@ -177,3 +179,8 @@ function onBurstsNoteHit() {
     drawBurst(bursts_notes, bursts_index);
   }
 }
+
+window.refreshBurstColors = () => {
+  if (!bursts_active) return;
+  updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
+};
