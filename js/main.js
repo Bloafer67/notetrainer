@@ -142,9 +142,14 @@ function onGameModeChange() {
     'play-the-notes': '/play-the-notes',
     'play-along':     '/play-along',
   };
-  history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
-
+  switchTab('game');
   showPregame();
+
+  try {
+    history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
+  } catch (e) {
+    // pushState can throw on file:// URLs — safe to ignore for local testing
+  }
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────
