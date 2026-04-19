@@ -22,17 +22,7 @@ let pa_startedAt     = 0;
 let pa_timerInterval = null;
 let pa_staffTopY     = null;
 let pa_staffBotY     = null;
-let pa_coloredNotes  = [];
-
-const PA_NOTE_COLORING = {
-  applyToBeams: true,
-  applyToFlag: true,
-  applyToLedgerLines: true,
-  applyToModifiers: true,
-  applyToNoteheads: true,
-  applyToStem: true,
-  applyToTies: true,
-};
+let pa_rawXmlCache   = { key: null, data: null };
 
 const PA_HZ_STEP_TABLE = (() => {
   const noteSteps = {
@@ -209,10 +199,19 @@ async function startPlayAlong() {
 }
 
 // ── OSMD rendering ────────────────────────────────────────────────────────
-async function pa_loadAndRender() {
+async function pa_loadAndRender({ preserveCursor = false } = {}) {
   const container = document.getElementById('pa-osmd-container');
   if (!container) return;
 
+  const accent = darkMode ? '#b4b2a9' : '#1a1a18';
+  const themeOptions = {
+    defaultColorMusic: accent,
+    defaultColorNotehead: accent,
+    defaultColorStem: accent,
+    defaultColorRest: accent,
+    defaultColorLabel: accent,
+    defaultColorTitle: accent,
+  };
   if (!pa_osmd) {
     pa_osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
       autoResize: false,
@@ -223,22 +222,35 @@ async function pa_loadAndRender() {
       drawPartNames: false,
       drawMeasureNumbers: false,
       renderSingleHorizontalStaffline: true,
+      ...themeOptions,
     });
+  } else {
+    pa_osmd.setOptions(themeOptions);
   }
 
+  const savedTimestamp = preserveCursor ? pa_cursorTimestamp() : null;
+
   try {
-    const res = await fetch(pa_song.xmlPath);
-    if (!res.ok) throw new Error(`Failed to load ${pa_song.xmlPath} (${res.status})`);
-    const isCompressed = /\.mxl$/i.test(pa_song.xmlPath);
-    const data = isCompressed
-      ? new Uint8Array(await res.arrayBuffer())
-      : await res.text();
+    if (pa_rawXmlCache.key !== pa_songKey) {
+      const res = await fetch(pa_song.xmlPath);
+      if (!res.ok) throw new Error(`Failed to load ${pa_song.xmlPath} (${res.status})`);
+      const isCompressed = /\.mxl$/i.test(pa_song.xmlPath);
+      const raw = isCompressed
+        ? new Uint8Array(await res.arrayBuffer())
+        : await res.text();
+      pa_rawXmlCache = { key: pa_songKey, data: raw };
+    }
+    const raw = pa_rawXmlCache.data;
+    const data = typeof raw === 'string' ? pa_colorizeMusicXml(raw) : raw;
     await pa_osmd.load(data);
     pa_osmd.render();
     pa_osmd.cursor.show();
     pa_osmd.cursor.reset();
-    pa_skipRestsAndEmpty();
-    pa_applyCursorNoteColors();
+    if (savedTimestamp != null) {
+      pa_advanceCursorTo(savedTimestamp);
+    } else {
+      pa_skipRestsAndEmpty();
+    }
     pa_measureStaffExtent();
     pa_scrollToCursor();
   } catch (err) {
@@ -246,6 +258,22 @@ async function pa_loadAndRender() {
     stopPlayAlong();
     alert(`Could not load song: ${err.message}`);
     showPregame();
+  }
+}
+
+function pa_cursorTimestamp() {
+  const ts = pa_osmd?.cursor?.iterator?.currentTimeStamp;
+  if (!ts) return null;
+  if (typeof ts.RealValue === 'number') return ts.RealValue;
+  if (ts.numerator != null && ts.denominator) return ts.numerator / ts.denominator;
+  return null;
+}
+
+function pa_advanceCursorTo(timestamp) {
+  while (!pa_cursorEnded()) {
+    const ts = pa_cursorTimestamp();
+    if (ts == null || ts >= timestamp) break;
+    pa_osmd.cursor.next();
   }
 }
 
@@ -259,7 +287,6 @@ function stopPlayAlong() {
   paClearWrongTimer(true);
   const overlay = document.getElementById('pa-pitch-overlay');
   if (overlay) overlay.innerHTML = '';
-  pa_resetCursorNoteColors();
   const { micEl } = paGetMicElements();
   if (micEl) micEl.style.display = 'none';
 }
@@ -324,57 +351,35 @@ function pa_noteNameFromPitch(pitch) {
   return `${NAMES[pitch.FundamentalNote]}${accMap[pitch.AccidentalHalfTones] || ''}${pitch.Octave}`;
 }
 
-function pa_resetCursorNoteColors() {
-  const defaultColor = getNotePalette('').noteStroke;
-  pa_coloredNotes.forEach(gNote => {
-    if (!pa_setGraphicalNoteColor(gNote, defaultColor)) {
-      console.warn('Could not reset Play Along note color');
-    }
-  });
-  pa_coloredNotes = [];
-}
-
-function pa_setGraphicalNoteColor(gNote, color) {
-  if (!gNote || !color) return false;
-
-  if (typeof gNote.setColor === 'function') {
-    gNote.setColor(color, PA_NOTE_COLORING);
-    return true;
+// Walk the MusicXML and stamp a `color` attribute on every <note> (plus its
+// <notehead>, <stem>, and <beam> children) based on the current boomwhacker
+// palette. OSMD natively honors MusicXML color attributes at render time,
+// which is far more reliable than post-render setColor() calls.
+function pa_colorizeMusicXml(xmlText) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    if (doc.querySelector('parsererror')) return xmlText;
+    const accMap = { '1': '#', '2': '##', '-1': 'b', '-2': 'bb' };
+    doc.querySelectorAll('note').forEach(noteEl => {
+      const pitchEl = noteEl.querySelector('pitch');
+      if (!pitchEl) return;
+      const step = pitchEl.querySelector('step')?.textContent;
+      if (!step) return;
+      const alter = pitchEl.querySelector('alter')?.textContent;
+      const octave = pitchEl.querySelector('octave')?.textContent || '';
+      const name = `${step}${accMap[alter] || ''}${octave}`;
+      const palette = getNotePalette(name);
+      const color = darkMode ? palette.noteFill : palette.noteStroke;
+      noteEl.setAttribute('color', color);
+      noteEl.querySelector('notehead')?.setAttribute('color', color);
+      noteEl.querySelector('stem')?.setAttribute('color', color);
+      noteEl.querySelectorAll('beam').forEach(b => b.setAttribute('color', color));
+    });
+    return new XMLSerializer().serializeToString(doc);
+  } catch (err) {
+    console.warn('Play Along: could not colorize MusicXML', err);
+    return xmlText;
   }
-
-  const root = typeof gNote.getSVGGElement === 'function' ? gNote.getSVGGElement() : null;
-  if (!root) return false;
-
-  root.style.color = color;
-  const svgNodes = [root, ...root.querySelectorAll('*')];
-  svgNodes.forEach(node => {
-    const fill = node.getAttribute?.('fill');
-    const stroke = node.getAttribute?.('stroke');
-
-    if (!fill || fill !== 'none') node.style.fill = color;
-    if (!stroke || stroke !== 'none') node.style.stroke = color;
-  });
-
-  return true;
-}
-
-function pa_applyCursorNoteColors() {
-  const gNotes = pa_osmd?.cursor?.GNotesUnderCursor?.();
-  if (!gNotes?.length) {
-    pa_resetCursorNoteColors();
-    return;
-  }
-
-  pa_resetCursorNoteColors();
-  gNotes.forEach(gNote => {
-    const color = getNotePalette(pa_noteNameFromPitch(gNote?.sourceNote?.Pitch)).noteStroke;
-    try {
-      if (!pa_setGraphicalNoteColor(gNote, color)) return;
-      pa_coloredNotes.push(gNote);
-    } catch (err) {
-      console.warn('Could not color Play Along note', err);
-    }
-  });
 }
 
 function pa_scrollToCursor() {
@@ -522,11 +527,9 @@ function pa_advance() {
   pa_osmd.cursor.next();
   pa_skipRestsAndEmpty();
   if (pa_cursorEnded()) {
-    pa_resetCursorNoteColors();
     pa_onSongComplete();
     return;
   }
-  pa_applyCursorNoteColors();
   pa_scrollToCursor();
 }
 
@@ -587,7 +590,9 @@ function pa_onSongComplete() {
 
 window.refreshPlayAlongPitchColors = () => {
   if (!pa_active) return;
-  pa_applyCursorNoteColors();
+  // Theme / boomwhacker toggles mid-song: reload the score with new colors,
+  // restoring the cursor to its saved timestamp so progress isn't lost.
+  pa_loadAndRender({ preserveCursor: true });
   const targetHz = pa_currentTargetHz();
   if (!targetHz || !pa_smoothHz) {
     pa_updatePitchOverlay(pa_smoothHz, false);
