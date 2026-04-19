@@ -315,13 +315,35 @@ function pa_noteNameFromPitch(pitch) {
 function pa_resetCursorNoteColors() {
   const defaultColor = getNotePalette('').noteStroke;
   pa_coloredNotes.forEach(gNote => {
-    try {
-      gNote?.setColor?.(defaultColor, PA_NOTE_COLORING);
-    } catch (err) {
-      console.warn('Could not reset Play Along note color', err);
+    if (!pa_setGraphicalNoteColor(gNote, defaultColor)) {
+      console.warn('Could not reset Play Along note color');
     }
   });
   pa_coloredNotes = [];
+}
+
+function pa_setGraphicalNoteColor(gNote, color) {
+  if (!gNote || !color) return false;
+
+  if (typeof gNote.setColor === 'function') {
+    gNote.setColor(color, PA_NOTE_COLORING);
+    return true;
+  }
+
+  const root = typeof gNote.getSVGGElement === 'function' ? gNote.getSVGGElement() : null;
+  if (!root) return false;
+
+  root.style.color = color;
+  const svgNodes = [root, ...root.querySelectorAll('*')];
+  svgNodes.forEach(node => {
+    const fill = node.getAttribute?.('fill');
+    const stroke = node.getAttribute?.('stroke');
+
+    if (!fill || fill !== 'none') node.style.fill = color;
+    if (!stroke || stroke !== 'none') node.style.stroke = color;
+  });
+
+  return true;
 }
 
 function pa_applyCursorNoteColors() {
@@ -335,7 +357,7 @@ function pa_applyCursorNoteColors() {
   gNotes.forEach(gNote => {
     const color = getNotePalette(pa_noteNameFromPitch(gNote?.sourceNote?.Pitch)).noteStroke;
     try {
-      gNote.setColor(color, PA_NOTE_COLORING);
+      if (!pa_setGraphicalNoteColor(gNote, color)) return;
       pa_coloredNotes.push(gNote);
     } catch (err) {
       console.warn('Could not color Play Along note', err);
