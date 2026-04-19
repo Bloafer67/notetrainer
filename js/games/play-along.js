@@ -587,6 +587,7 @@ function pa_onSongComplete() {
   if (complete) complete.style.display = 'flex';
   if (controls) controls.style.display = 'none';
   if (feedback) feedback.textContent = '';
+  document.getElementById('recap-view').classList.remove('show');
   paSetStaffVisible(false);
 
   const qualifies = doesResultQualify(window.lastResult);
