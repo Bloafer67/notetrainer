@@ -253,16 +253,19 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
 .icon-btn:hover { background: var(--surface2); color: var(--text2); }
 .icon-btn svg { display: block; color: inherit; }
 .icon-btn.mode-btn {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  padding: 0;
+}
+.icon-btn.mode-btn svg {
+  width: 16px;
+  height: 16px;
 }
 .icon-btn.mode-btn.active {
-  color: #fff;
+  color: var(--primary);
   border-color: transparent;
-  background: linear-gradient(135deg, #F15B5B 0%, #F59D3D 18%, #F8D64E 36%, #62BA63 54%, #2FC2E8 72%, #AE63D7 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  background: var(--primary-light);
 }
 .icon-btn.mode-btn.active:hover {
-  color: #fff;
+  color: var(--primary);
   filter: brightness(1.04);
 }
 

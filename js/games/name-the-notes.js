@@ -241,10 +241,9 @@ function nextQuestion() {
 
 function refreshChoiceButtonColors() {
   document.querySelectorAll('.choice-btn').forEach(btn => {
-    const palette = getNotePalette(btn.dataset.name);
-    btn.style.setProperty('--choice-btn-bg', palette.buttonBg);
-    btn.style.setProperty('--choice-btn-text', palette.buttonText);
-    btn.style.setProperty('--choice-btn-border', palette.noteStroke);
+    btn.style.removeProperty('--choice-btn-bg');
+    btn.style.removeProperty('--choice-btn-text');
+    btn.style.removeProperty('--choice-btn-border');
   });
 }
 

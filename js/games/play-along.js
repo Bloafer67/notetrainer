@@ -22,6 +22,17 @@ let pa_startedAt     = 0;
 let pa_timerInterval = null;
 let pa_staffTopY     = null;
 let pa_staffBotY     = null;
+let pa_coloredNotes  = [];
+
+const PA_NOTE_COLORING = {
+  applyToBeams: true,
+  applyToFlag: true,
+  applyToLedgerLines: true,
+  applyToModifiers: true,
+  applyToNoteheads: true,
+  applyToStem: true,
+  applyToTies: true,
+};
 
 const PA_HZ_STEP_TABLE = (() => {
   const noteSteps = {
@@ -215,6 +226,7 @@ async function pa_loadAndRender() {
     pa_osmd.cursor.show();
     pa_osmd.cursor.reset();
     pa_skipRestsAndEmpty();
+    pa_applyCursorNoteColors();
     pa_measureStaffExtent();
     pa_scrollToCursor();
   } catch (err) {
@@ -235,6 +247,7 @@ function stopPlayAlong() {
   paClearWrongTimer(true);
   const overlay = document.getElementById('pa-pitch-overlay');
   if (overlay) overlay.innerHTML = '';
+  pa_resetCursorNoteColors();
   const { micEl } = paGetMicElements();
   if (micEl) micEl.style.display = 'none';
 }
@@ -289,11 +302,45 @@ function pa_currentTargetHz() {
 
 function pa_currentDisplayNoteName() {
   const note = pa_currentNote();
-  const pitch = note?.Pitch;
+  return pa_noteNameFromPitch(note?.Pitch);
+}
+
+function pa_noteNameFromPitch(pitch) {
   if (!pitch) return '';
   const NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   const accMap = { 1: '#', 2: '##', '-1': 'b', '-2': 'bb' };
   return `${NAMES[pitch.FundamentalNote]}${accMap[pitch.AccidentalHalfTones] || ''}${pitch.Octave}`;
+}
+
+function pa_resetCursorNoteColors() {
+  const defaultColor = getNotePalette('').noteStroke;
+  pa_coloredNotes.forEach(gNote => {
+    try {
+      gNote?.setColor?.(defaultColor, PA_NOTE_COLORING);
+    } catch (err) {
+      console.warn('Could not reset Play Along note color', err);
+    }
+  });
+  pa_coloredNotes = [];
+}
+
+function pa_applyCursorNoteColors() {
+  const gNotes = pa_osmd?.cursor?.GNotesUnderCursor?.();
+  if (!gNotes?.length) {
+    pa_resetCursorNoteColors();
+    return;
+  }
+
+  pa_resetCursorNoteColors();
+  gNotes.forEach(gNote => {
+    const color = getNotePalette(pa_noteNameFromPitch(gNote?.sourceNote?.Pitch)).noteStroke;
+    try {
+      gNote.setColor(color, PA_NOTE_COLORING);
+      pa_coloredNotes.push(gNote);
+    } catch (err) {
+      console.warn('Could not color Play Along note', err);
+    }
+  });
 }
 
 function pa_scrollToCursor() {
@@ -441,9 +488,11 @@ function pa_advance() {
   pa_osmd.cursor.next();
   pa_skipRestsAndEmpty();
   if (pa_cursorEnded()) {
+    pa_resetCursorNoteColors();
     pa_onSongComplete();
     return;
   }
+  pa_applyCursorNoteColors();
   pa_scrollToCursor();
 }
 
@@ -503,6 +552,7 @@ function pa_onSongComplete() {
 
 window.refreshPlayAlongPitchColors = () => {
   if (!pa_active) return;
+  pa_applyCursorNoteColors();
   const targetHz = pa_currentTargetHz();
   if (!targetHz || !pa_smoothHz) {
     pa_updatePitchOverlay(pa_smoothHz, false);
