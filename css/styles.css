@@ -689,6 +689,7 @@ details[open] summary::after { content: '▾'; }
   border-radius: 12px; overflow: hidden; position: relative;
   padding: 0.5rem 0;
 }
+[data-theme="dark"] .pa-staff-wrap { background: var(--bg); }
 .pa-header {
   display: flex; justify-content: space-between; align-items: center;
   gap: 12px; padding: 0 4px;
