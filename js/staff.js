@@ -279,3 +279,111 @@ function drawStaff(note, opts = {}) {
     }, note.name));
   }
 }
+
+// ── Draw burst (multiple notes at once) ──────────────────────────────────
+// Renders 3+ notes evenly spaced across the staff, with the active one
+// highlighted in blue and completed ones drawn dimmed/green.
+function drawBurst(notes, currentIndex) {
+  const svg = document.getElementById('staff-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${STAFF_VIEWBOX_WIDTH} ${STAFF_VIEWBOX_HEIGHT}`);
+
+  const topLine = STAFF_TOP_LINE;
+  const gap = STAFF_GAP;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const lineCol      = darkMode ? '#666' : '#888';
+  const clefCol      = darkMode ? '#aaa' : '#666';
+  const ledgerCol    = darkMode ? '#999' : '#444';
+  const noteColIdle  = darkMode ? '#e0dfd8' : '#1a1a18';
+  const noteColDone  = darkMode ? '#3B6D11' : '#639922';
+  const noteColCurr  = '#185FA5';
+  const accCol       = darkMode ? '#aaa' : '#444';
+
+  function el(tag, attrs, text) {
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  // Five staff lines
+  for (let i = 0; i < 5; i++) {
+    const y = topLine + i * gap;
+    svg.appendChild(el('line', {x1:40,x2:320,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
+  }
+
+  // Clef
+  if (clef === 'bass') {
+    svg.appendChild(el('text', {x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol}, '𝄢'));
+  } else {
+    svg.appendChild(el('text', {x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol}, '𝄞'));
+    if (clef === 'guitar') {
+      svg.appendChild(el('text', {x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'}, '8'));
+    }
+  }
+
+  // Key signature
+  const acc = KEY_SIGS[keyIndex].acc;
+  const accLetters = Object.keys(acc);
+  if (accLetters.length > 0) {
+    const isSharp  = acc[accLetters[0]] === '#';
+    const clefType = clef === 'bass' ? 'bass' : 'treble';
+    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
+    const symbol = isSharp ? '♯' : '♭';
+    let ksx = 46;
+    accLetters.forEach((_, i) => {
+      const ky = noteYPos(positions[i], topLine, gap);
+      svg.appendChild(el('text', {x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'}, symbol));
+      ksx += 10;
+    });
+  }
+
+  // Note positions — evenly spaced across writable area
+  const startX = accLetters.length > 0 ? 130 : 115;
+  const endX   = 300;
+  const r      = 7;
+  const count  = notes.length;
+
+  notes.forEach((note, idx) => {
+    const noteCx = count === 1
+      ? (startX + endX) / 2
+      : startX + (endX - startX) * (idx / (count - 1));
+    const cy = noteYPos(note.step, topLine, gap);
+
+    let fillCol = noteColIdle;
+    let opacity = '0.4';
+    if (idx === currentIndex) { fillCol = noteColCurr; opacity = '1'; }
+    else if (idx < currentIndex) { fillCol = noteColDone; opacity = '0.85'; }
+
+    // Ledger lines
+    const ledgerSteps = [];
+    for (let s = -2; s >= note.step; s -= 2) ledgerSteps.push(s);
+    for (let s = 10; s <= note.step; s += 2) ledgerSteps.push(s);
+    [...new Set(ledgerSteps)].forEach(s => {
+      const ly = noteYPos(s, topLine, gap);
+      svg.appendChild(el('line', {
+        x1:noteCx-r-4, x2:noteCx+r+4, y1:ly, y2:ly,
+        stroke:ledgerCol, 'stroke-width':'1.5', opacity,
+      }));
+    });
+
+    // Note head
+    svg.appendChild(el('ellipse', {
+      cx:noteCx, cy,
+      rx:r, ry:Math.round(r*0.72),
+      fill:fillCol, opacity,
+      transform:`rotate(-15,${noteCx},${cy})`,
+    }));
+
+    // Stem
+    const stemUp = note.step < 4;
+    svg.appendChild(el('line', {
+      x1:stemUp?noteCx+r-1:noteCx-r+1,
+      x2:stemUp?noteCx+r-1:noteCx-r+1,
+      y1:cy, y2:stemUp?cy-32:cy+32,
+      stroke:fillCol,'stroke-width':'1.5', opacity,
+    }));
+  });
+}
