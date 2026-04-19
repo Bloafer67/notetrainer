@@ -43,7 +43,12 @@ function initNameTheNotes() {
 }
 
 function bestKey() {
-  return 'mntr3-best-' + KEY_SIGS[keyIndex].short + '-' + clef + '-' + window.noteRangeMode;
+  // Bursts has its own high-score namespace since the score units differ
+  // (completed bursts vs. individual notes).
+  const prefix = window.gameMode === 'bursts'
+    ? 'mntr3-bursts-best-'
+    : 'mntr3-best-';
+  return prefix + KEY_SIGS[keyIndex].short + '-' + clef + '-' + window.noteRangeMode;
 }
 
 function loadBest() {
@@ -85,7 +90,7 @@ function togglePause() {
   } else {
     document.getElementById('overlay-pause').classList.remove('show');
     // Only show choices in Name the Notes mode
-    if (window.gameMode !== 'play-the-notes') {
+    if (window.gameMode !== 'play-the-notes' && window.gameMode !== 'bursts') {
       document.getElementById('choices').style.display = 'grid';
     }
     setTimerIcon('pause');
@@ -101,6 +106,10 @@ function startGame() {
   }
   if (window.gameMode === 'play-along') {
     startPlayAlong();
+    return;
+  }
+  if (window.gameMode === 'bursts') {
+    startBursts();
     return;
   }
   startNameTheNotes();
@@ -165,6 +174,7 @@ function endGame() {
   lastScore = score;
   setTimerIcon('play');
   if (window.gameMode === 'play-the-notes') stopPlayTheNotes();
+  if (window.gameMode === 'bursts') stopBursts();
 
   const clefLabel = clef === 'guitar'
     ? 'Guitar (8vb)'
@@ -185,8 +195,11 @@ function endGame() {
   if (isNew) localStorage.setItem(bestKey(), lastScore);
 
   document.getElementById('recap-score').textContent = lastScore;
+  const unit = window.gameMode === 'bursts'
+    ? (lastScore === 1 ? 'Burst' : 'Bursts')
+    : (lastScore === 1 ? 'Note' : 'Notes');
   document.getElementById('recap-sub-line').textContent =
-    (lastScore === 1 ? 'Note' : 'Notes') + ' in ' + gameDuration + ' seconds';
+    unit + ' in ' + gameDuration + ' seconds';
   document.getElementById('recap-streak-line').textContent = 'Best streak: ' + streak;
   document.getElementById('recap-new-best').style.display =
     (isNew && lastScore > 0) ? 'block' : 'none';
@@ -331,7 +344,20 @@ function shareScore() {
   const clefLabel = clef === 'guitar'
     ? 'Guitar (8vb)'
     : clef.charAt(0).toUpperCase() + clef.slice(1);
-  const text = `🎼 Name the Notes\n⭐ ${lastScore} notes in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel} · ${getDrillRangeLabel(window.noteRangeMode)}\nhttps://notetrainer-eight.vercel.app`;
+  const mode = window.gameMode || 'name-the-notes';
+  const titleMap = {
+    'name-the-notes': '🎼 Name the Notes',
+    'play-the-notes': '🎸 Play the Notes',
+    'bursts':         '💥 Bursts',
+  };
+  const unitMap = {
+    'name-the-notes': 'notes',
+    'play-the-notes': 'notes',
+    'bursts':         'bursts',
+  };
+  const title = titleMap[mode] || titleMap['name-the-notes'];
+  const unit  = unitMap[mode]  || 'notes';
+  const text = `${title}\n⭐ ${lastScore} ${unit} in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel} · ${getDrillRangeLabel(window.noteRangeMode)}\nhttps://notetrainer-eight.vercel.app`;
   if (navigator.share) {
     navigator.share({ text }).catch(() => {});
   } else {

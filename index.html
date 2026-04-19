@@ -15,6 +15,7 @@
       <option value="name-the-notes">Name the Notes</option>
       <option value="play-the-notes">Play the Notes</option>
       <option value="play-along">Play Along</option>
+      <option value="bursts">Bursts</option>
     </select>
   </div>
   <div class="top-btns">
@@ -61,6 +62,12 @@
         <div id="pregame-pa" style="display:none;">
           <div class="pregame-heading">Play Along</div>
           <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">Notes scroll past — play each one on your instrument to light it up and move forward.</div>
+        </div>
+
+        <!-- Bursts content -->
+        <div id="pregame-bursts" style="display:none;">
+          <div class="pregame-heading">Bursts</div>
+          <div style="font-size:15px;color:var(--text2);margin-top:10px;line-height:1.5;text-align:center;">Three notes at a time — play them in order to clear the burst. Finish as many as you can before the timer runs out.</div>
         </div>
 
         <!-- Selectors (hidden for Play Along) -->
@@ -344,6 +351,7 @@
 <script src="js/games/play-the-notes.js"></script>
 <script src="js/songs/dinks-song.js"></script>
 <script src="js/games/play-along.js"></script>
+<script src="js/games/bursts.js"></script>
 <script src="js/custom-selects.js"></script>
 <script src="js/main.js"></script>
 
@@ -352,6 +360,7 @@
   initNameTheNotes();
   initPlayTheNotes();
   initPlayAlong();
+  initBursts();
   initApp();
   initCustomSelects();
 </script>
