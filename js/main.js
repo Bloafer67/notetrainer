@@ -111,6 +111,8 @@ const ICON_MOON     = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
 const ICON_SUN      = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
 const ICON_BOOMWHACKER_OFF = `<circle cx="12" cy="12" r="6.5"/><path d="M12 5.5a6.5 6.5 0 0 0 0 13"/>`;
 const ICON_BOOMWHACKER_ON  = `<circle cx="9" cy="10" r="4.25"/><circle cx="15" cy="10" r="4.25"/><circle cx="12" cy="15" r="4.25"/>`;
+const ICON_GEAR = `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`;
+const ICON_CLOSE_X = `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`;
 
 function setMuteIcon() {
   document.getElementById('mute-icon').innerHTML = muted ? ICON_MUTED : ICON_SOUND_ON;
@@ -123,6 +125,43 @@ function setBoomwhackerIcon() {
   if (!icon) return;
   icon.innerHTML = boomwhackerMode ? ICON_BOOMWHACKER_ON : ICON_BOOMWHACKER_OFF;
 }
+
+// ── Settings tray ─────────────────────────────────────────────────────────
+let settingsTrayOpen = false;
+
+function setSettingsGearIcon() {
+  const icon = document.getElementById('settings-gear-icon');
+  if (!icon) return;
+  icon.innerHTML = settingsTrayOpen ? ICON_CLOSE_X : ICON_GEAR;
+}
+
+function setSettingsTrayOpen(open) {
+  settingsTrayOpen = open;
+  const tray = document.getElementById('settings-tray');
+  const gear = document.getElementById('settings-gear-btn');
+  if (!tray || !gear) return;
+  tray.classList.toggle('open', open);
+  tray.setAttribute('aria-hidden', open ? 'false' : 'true');
+  gear.classList.toggle('open', open);
+  gear.setAttribute('aria-expanded', open ? 'true' : 'false');
+  gear.title = open ? 'Close settings' : 'Settings';
+  gear.setAttribute('aria-label', open ? 'Close settings' : 'Settings');
+  setSettingsGearIcon();
+}
+
+function toggleSettingsTray() {
+  setSettingsTrayOpen(!settingsTrayOpen);
+}
+
+document.addEventListener('click', e => {
+  if (!settingsTrayOpen) return;
+  if (e.target.closest('#settings-tray') || e.target.closest('#settings-gear-btn')) return;
+  setSettingsTrayOpen(false);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && settingsTrayOpen) setSettingsTrayOpen(false);
+});
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(name) {
@@ -288,6 +327,7 @@ function initApp() {
   setMuteIcon();
   setThemeIcon();
   updateBoomwhackerBtn();
+  setSettingsGearIcon();
   updateNoteNamesBtn();
   syncRangeModeSelect();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
