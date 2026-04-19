@@ -129,6 +129,17 @@ function paUpdateSummary() {
   }
 }
 
+function paSetStaffVisible(visible) {
+  const root = document.getElementById('pa-active');
+  if (!root) return;
+  const header = root.querySelector('.pa-header');
+  const staff = root.querySelector('.pa-staff-wrap');
+  const feedback = document.getElementById('pa-feedback');
+  if (header) header.style.display = visible ? '' : 'none';
+  if (staff) staff.style.display = visible ? '' : 'none';
+  if (feedback) feedback.style.display = visible ? '' : 'none';
+}
+
 function paResetSaveControls() {
   const form = document.getElementById('pa-complete-form');
   const nameInput = document.getElementById('pa-player-name');
@@ -189,6 +200,7 @@ async function startPlayAlong() {
   if (complete) complete.style.display = 'none';
   if (controls) controls.style.display = '';
   if (feedback) feedback.textContent = '';
+  paSetStaffVisible(true);
 
   paResetSaveControls();
   paUpdateSummary();
@@ -556,6 +568,7 @@ function pa_onSongComplete() {
   if (complete) complete.style.display = 'flex';
   if (controls) controls.style.display = 'none';
   if (feedback) feedback.textContent = '';
+  paSetStaffVisible(false);
 
   const qualifies = doesResultQualify(window.lastResult);
   if (form) form.style.display = qualifies ? 'flex' : 'none';
