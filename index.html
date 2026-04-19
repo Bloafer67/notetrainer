@@ -19,14 +19,19 @@
     </select>
   </div>
   <div class="top-btns">
-    <button class="icon-btn mode-btn" id="boomwhacker-toggle" onclick="toggleBoomwhackerMode()" title="Toggle boomwhacker colors" aria-label="Toggle boomwhacker colors" aria-pressed="false">
-      <svg id="boomwhacker-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
-    </button>
-    <button class="icon-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">
-      <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-    </button>
-    <button class="icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme">
-      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    <div class="settings-tray" id="settings-tray" aria-hidden="true">
+      <button class="icon-btn mode-btn tray-btn" id="boomwhacker-toggle" onclick="toggleBoomwhackerMode()" title="Toggle boomwhacker colors" aria-label="Toggle boomwhacker colors" aria-pressed="false">
+        <svg id="boomwhacker-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+      </button>
+      <button class="icon-btn tray-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">
+        <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+      <button class="icon-btn tray-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme">
+        <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+    </div>
+    <button class="icon-btn settings-gear-btn" id="settings-gear-btn" onclick="toggleSettingsTray()" title="Settings" aria-label="Settings" aria-expanded="false">
+      <svg id="settings-gear-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
     </button>
   </div>
 </div>

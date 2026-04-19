@@ -243,7 +243,7 @@ body {
   margin-bottom: 1rem;
 }
 h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
-.top-btns { display: flex; gap: 4px; }
+.top-btns { display: flex; gap: 6px; align-items: center; }
 .icon-btn {
   background: var(--bg); border: 0.5px solid var(--border);
   border-radius: 999px; width: 34px; height: 34px;
@@ -267,6 +267,50 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
 .icon-btn.mode-btn.active:hover {
   color: var(--primary);
   filter: brightness(1.04);
+}
+
+/* ── Settings tray & gear ─────────────────────────────────────────────── */
+.settings-tray {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+  transition:
+    max-width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    padding 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.18s ease,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.settings-tray.open {
+  max-width: 160px;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.settings-tray .tray-btn {
+  background: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+}
+.settings-tray .tray-btn:hover { background: var(--surface2); }
+.settings-tray .tray-btn.mode-btn.active {
+  background: var(--primary-light);
+}
+.settings-gear-btn {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+}
+.settings-gear-btn.open {
+  transform: rotate(90deg);
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────── */
