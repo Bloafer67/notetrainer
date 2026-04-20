@@ -1,6 +1,7 @@
 // ── games/name-the-notes.js ───────────────────────────────────────────────
 // Handles: all Name the Notes game state and logic
-// Depends on: KEY_SIGS, getDrillNotes(), getDrillRangeLabel(), drawStaff()
+// Depends on: KEY_SIGS, getDrillNotes(), getDrillRangeLabel(), renderNotes(),
+//             setStaffRenderer()
 //             playNote (audio/synth.js)
 //             showToast, showAnswerToast, setTimerIcon, setTimerDisplay,
 //             toMMSS, showPregame (main.js)
@@ -139,6 +140,7 @@ function startNameTheNotes() {
   document.getElementById('choices').style.display = 'grid';
   document.getElementById('feedback').textContent = '';
 
+  setStaffRenderer('osmd');
   setTimerIcon('pause');
 
   const saveBtn = document.getElementById('save-btn');
@@ -234,7 +236,9 @@ function nextQuestion() {
   document.getElementById('feedback').textContent = '';
   const notes = noteSet();
   current = notes[Math.floor(Math.random() * notes.length)];
-  drawStaff(current);
+  renderNotes(document.getElementById('staff-osmd'), [{ name: current.name }], {
+    clef, keySigIndex: keyIndex,
+  });
   buildChoices(current, notes);
   playNote(current.actualName);
 }

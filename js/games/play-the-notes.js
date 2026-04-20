@@ -69,6 +69,7 @@ async function startPlayTheNotes() {
   // Tuner hidden — pitch feedback shown via line color instead
   showTuner(false);
 
+  setStaffRenderer('svg');
   setTimerIcon('pause');
   loadBest();
   ptnNextQuestion();

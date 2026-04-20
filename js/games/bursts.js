@@ -75,6 +75,7 @@ async function startBursts() {
   document.getElementById('feedback').textContent  = '';
 
   showTuner(false);
+  setStaffRenderer('svg');
   setTimerIcon('pause');
   loadBest();
   burstsNextRound();
