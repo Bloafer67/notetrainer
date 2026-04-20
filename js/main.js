@@ -14,6 +14,8 @@ function refreshNotationColors() {
     renderNotes(document.getElementById('staff-osmd'), [{ name: window.current.name }], {
       clef, keySigIndex: keyIndex,
     });
+  } else if (window.gameMode === 'play-the-notes' && window.current) {
+    window.ptnRenderCurrent?.();
   } else if (window.current) {
     drawStaff(window.current, {
       showLabel: showNoteNames && window.gameMode === 'play-the-notes',
@@ -67,7 +69,7 @@ function toggleNoteNames() {
   updateNoteNamesBtn();
   // Re-draw current note if in PTN to immediately apply change
   if (window.current && window.gameMode === 'play-the-notes') {
-    drawStaff(window.current, { showLabel: showNoteNames });
+    window.ptnRenderCurrent?.();
   }
 }
 
