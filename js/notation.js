@@ -48,6 +48,15 @@ function notationNoteColor(note) {
   return darkMode ? '#e0dfd8' : '#1a1a18';
 }
 
+const NOTATION_PAD_REST = [
+  '<note print-object="no">',
+  '<rest/>',
+  '<duration>1</duration>',
+  '<voice>1</voice>',
+  '<type>quarter</type>',
+  '</note>',
+].join('');
+
 function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {}) {
   const fifths = NOTATION_KEY_FIFTHS[keySigIndex] ?? 0;
   const clefXml = notationClefXml(clef);
@@ -70,6 +79,14 @@ function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {})
     ].join('');
   }).join('');
 
+  // Pad with hidden quarter rests so real notes land centered in a wider
+  // measure instead of jammed against the clef. `print-object="no"` keeps the
+  // rests from rendering glyphs but still reserves horizontal space.
+  const PAD = 2;
+  const padXml = NOTATION_PAD_REST.repeat(PAD);
+  const totalBeats = notes.length + PAD * 2;
+  const body = padXml + noteXml + padXml;
+
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
     '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">',
@@ -80,19 +97,22 @@ function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {})
     '<attributes>',
     '<divisions>1</divisions>',
     `<key><fifths>${fifths}</fifths></key>`,
-    `<time><beats>${notes.length || 1}</beats><beat-type>4</beat-type></time>`,
+    `<time print-object="no"><beats>${totalBeats}</beats><beat-type>4</beat-type></time>`,
     clefXml,
     '</attributes>',
-    noteXml,
+    body,
     '</measure>',
     '</part>',
     '</score-partwise>',
   ].join('');
 }
 
+function notationPitchedNoteEls(doc) {
+  return [...doc.querySelectorAll('note')].filter(el => el.querySelector('pitch'));
+}
+
 function notationColorizeDoc(doc, notes) {
-  const noteEls = doc.querySelectorAll('note');
-  noteEls.forEach((el, i) => {
+  notationPitchedNoteEls(doc).forEach((el, i) => {
     const note = notes[i];
     if (!note) return;
     const color = notationNoteColor(note);
@@ -104,8 +124,7 @@ function notationColorizeDoc(doc, notes) {
 }
 
 function notationAddLyrics(doc, notes) {
-  const noteEls = doc.querySelectorAll('note');
-  noteEls.forEach((el, i) => {
+  notationPitchedNoteEls(doc).forEach((el, i) => {
     const note = notes[i];
     if (!note) return;
     const lyric = doc.createElement('lyric');
@@ -155,6 +174,10 @@ async function renderNotes(container, notes, opts = {}) {
     osmd.setOptions(notationThemeOptions());
   }
 
+  // Reset zoom — an earlier render may have left a cached zoom on the OSMD
+  // instance. Without this, subsequent renders inherit that zoom and overflow.
+  osmd.Zoom = 1;
+
   const xml = notationBuildMusicXml(notes, opts);
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.querySelector('parsererror')) {
@@ -172,7 +195,27 @@ async function renderNotes(container, notes, opts = {}) {
     console.error('renderNotes: OSMD load/render failed', err);
     return null;
   }
+
+  // Center the rendered SVG horizontally within the container. OSMD left-
+  // aligns its output which can leave unbalanced whitespace on one side.
+  const renderedSvg = container.querySelector('svg');
+  if (renderedSvg) {
+    renderedSvg.style.display = 'block';
+    renderedSvg.style.margin = '0 auto';
+  }
+
   return osmd;
 }
 
+// Swap between the legacy custom-SVG staff (`#staff-svg`) and the OSMD
+// container (`#staff-osmd`). Games being migrated call this with 'osmd'; the
+// rest call it with 'svg' so they keep working during the phased rollout.
+function setStaffRenderer(kind) {
+  const svg = document.getElementById('staff-svg');
+  const div = document.getElementById('staff-osmd');
+  if (svg) svg.style.display = kind === 'osmd' ? 'none' : '';
+  if (div) div.style.display = kind === 'osmd' ? '' : 'none';
+}
+
 window.renderNotes = renderNotes;
+window.setStaffRenderer = setStaffRenderer;

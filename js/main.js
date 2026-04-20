@@ -10,6 +10,10 @@ let boomwhackerMode = localStorage.getItem('mntr-boomwhacker') === '1';
 function refreshNotationColors() {
   if (window.gameMode === 'bursts' && window.burstNotes?.length) {
     drawBurst(window.burstNotes, window.burstIndex || 0);
+  } else if (window.gameMode === 'name-the-notes' && window.current) {
+    renderNotes(document.getElementById('staff-osmd'), [{ name: window.current.name }], {
+      clef, keySigIndex: keyIndex,
+    });
   } else if (window.current) {
     drawStaff(window.current, {
       showLabel: showNoteNames && window.gameMode === 'play-the-notes',
