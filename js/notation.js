@@ -213,9 +213,105 @@ async function renderNotes(container, notes, opts = {}) {
 function setStaffRenderer(kind) {
   const svg = document.getElementById('staff-svg');
   const div = document.getElementById('staff-osmd');
+  const overlay = document.getElementById('staff-overlay');
   if (svg) svg.style.display = kind === 'osmd' ? 'none' : '';
   if (div) div.style.display = kind === 'osmd' ? '' : 'none';
+  if (overlay) overlay.style.display = kind === 'osmd' ? '' : 'none';
+}
+
+// ── Pitch-overlay helpers ───────────────────────────────────────────────────
+// Shared between games that draw a live pitch indicator over the staff. The
+// overlay is a bare <svg> positioned over the rendered OSMD container; caller
+// supplies the overlay element so multiple games can use different overlays.
+
+function notationStaffBounds(container, referenceEl) {
+  if (!container) return null;
+  const svg = container.querySelector('svg');
+  if (!svg) return null;
+  const ref = referenceEl || container;
+  const refRect = ref.getBoundingClientRect();
+
+  // OSMD/VexFlow renders the five staff lines as thin horizontal <path>
+  // elements (h≈0, w=staff width). Pick the five widest such elements;
+  // ledger lines are shorter and get dropped automatically.
+  const candidates = [
+    ...svg.querySelectorAll('path'),
+    ...svg.querySelectorAll('line'),
+  ]
+    .map(el => ({ el, rect: el.getBoundingClientRect() }))
+    .filter(c => c.rect.width > 40 && c.rect.height < 2);
+
+  if (candidates.length < 5) return null;
+
+  const widest = [...candidates]
+    .sort((a, b) => b.rect.width - a.rect.width)
+    .slice(0, 5)
+    .sort((a, b) => a.rect.top - b.rect.top);
+
+  const topRect = widest[0].rect;
+  const botRect = widest[4].rect;
+  return {
+    topY: topRect.top - refRect.top,
+    botY: botRect.top - refRect.top,
+    leftX: topRect.left - refRect.left,
+    rightX: topRect.right - refRect.left,
+  };
+}
+
+function notationYForStep(bounds, step) {
+  if (!bounds) return null;
+  const pxPerStep = (bounds.botY - bounds.topY) / 8;
+  return bounds.botY - step * pxPerStep;
+}
+
+function notationClearOverlay(overlay) {
+  if (overlay) overlay.innerHTML = '';
+}
+
+function notationDrawPitchLine(overlay, { y, color, x1, x2, opacity = 0.9 }) {
+  if (!overlay) return;
+  overlay.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('id', 'pitch-line');
+  line.setAttribute('x1', x1);
+  line.setAttribute('x2', x2);
+  line.setAttribute('y1', y);
+  line.setAttribute('y2', y);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', '2.5');
+  line.setAttribute('stroke-linecap', 'round');
+  line.setAttribute('opacity', opacity);
+  overlay.appendChild(line);
+}
+
+function notationDrawPitchArrow(overlay, { direction, color, centerX, topY, botY }) {
+  if (!overlay) return;
+  overlay.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const arrow = document.createElementNS(ns, 'polygon');
+  arrow.setAttribute('id', 'pitch-arrow');
+  arrow.setAttribute('fill', color);
+  arrow.setAttribute('opacity', '0.85');
+  const size = 10;
+  if (direction === 'up') {
+    const tipY = Math.max(4, topY - 14);
+    const baseY = tipY + 12;
+    arrow.setAttribute('points',
+      `${centerX},${tipY} ${centerX - size},${baseY} ${centerX + size},${baseY}`);
+  } else {
+    const tipY = botY + 14;
+    const baseY = tipY - 12;
+    arrow.setAttribute('points',
+      `${centerX},${tipY} ${centerX - size},${baseY} ${centerX + size},${baseY}`);
+  }
+  overlay.appendChild(arrow);
 }
 
 window.renderNotes = renderNotes;
 window.setStaffRenderer = setStaffRenderer;
+window.notationStaffBounds = notationStaffBounds;
+window.notationYForStep = notationYForStep;
+window.notationClearOverlay = notationClearOverlay;
+window.notationDrawPitchLine = notationDrawPitchLine;
+window.notationDrawPitchArrow = notationDrawPitchArrow;
