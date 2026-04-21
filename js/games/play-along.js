@@ -245,6 +245,7 @@ async function pa_loadAndRender({ preserveCursor = false } = {}) {
     const raw = pa_rawXmlCache.data;
     const data = typeof raw === 'string' ? pa_colorizeMusicXml(raw) : raw;
     await pa_osmd.load(data);
+    pa_osmd.zoom = 1.5;
     pa_osmd.render();
     pa_osmd.cursor.show();
     pa_osmd.cursor.reset();

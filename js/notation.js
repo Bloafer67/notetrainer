@@ -174,10 +174,6 @@ async function renderNotes(container, notes, opts = {}) {
     osmd.setOptions(notationThemeOptions());
   }
 
-  // Reset zoom — an earlier render may have left a cached zoom on the OSMD
-  // instance. Without this, subsequent renders inherit that zoom and overflow.
-  osmd.Zoom = 1;
-
   const xml = notationBuildMusicXml(notes, opts);
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.querySelector('parsererror')) {
@@ -190,6 +186,7 @@ async function renderNotes(container, notes, opts = {}) {
 
   try {
     await osmd.load(serialized);
+    osmd.zoom = 1.5;
     osmd.render();
   } catch (err) {
     console.error('renderNotes: OSMD load/render failed', err);
