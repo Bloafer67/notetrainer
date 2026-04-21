@@ -309,3 +309,7 @@ window.refreshPitchGuideColors = () => {
 };
 
 window.ptnRenderCurrent = ptnRenderCurrent;
+
+// Shared with other pitch-based games (Bursts) so they can update the bounds
+// used by updatePitchLineOrArrow / hzToStaffY after their own OSMD render.
+window.setPitchBounds = (bounds) => { ptn_bounds = bounds; };

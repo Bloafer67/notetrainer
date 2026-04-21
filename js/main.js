@@ -9,7 +9,7 @@ let boomwhackerMode = localStorage.getItem('mntr-boomwhacker') === '1';
 
 function refreshNotationColors() {
   if (window.gameMode === 'bursts' && window.burstNotes?.length) {
-    drawBurst(window.burstNotes, window.burstIndex || 0);
+    window.burstsRenderCurrent?.();
   } else if (window.gameMode === 'name-the-notes' && window.current) {
     renderNotes(document.getElementById('staff-osmd'), [{ name: window.current.name }], {
       clef, keySigIndex: keyIndex,

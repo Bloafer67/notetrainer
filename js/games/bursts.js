@@ -75,7 +75,7 @@ async function startBursts() {
   document.getElementById('feedback').textContent  = '';
 
   showTuner(false);
-  setStaffRenderer('svg');
+  setStaffRenderer('osmd');
   setTimerIcon('pause');
   loadBest();
   burstsNextRound();
@@ -95,7 +95,7 @@ function stopBursts() {
 }
 
 // ── Generate next burst ──────────────────────────────────────────────────
-function burstsNextRound() {
+async function burstsNextRound() {
   bursts_smoothHz = null;
   if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
 
@@ -107,8 +107,20 @@ function burstsNextRound() {
   bursts_index = 0;
   current = bursts_notes[0];
   document.getElementById('feedback').textContent = '';
-  drawBurst(bursts_notes, bursts_index);
+  await burstsRenderCurrent();
   removePitchLine();
+}
+
+async function burstsRenderCurrent() {
+  const container = document.getElementById('staff-osmd');
+  if (!container || !bursts_notes.length) return;
+  const notes = bursts_notes.map((n, idx) => ({
+    name: n.name,
+    state: idx < bursts_index ? 'done' : idx === bursts_index ? 'current' : 'idle',
+  }));
+  await renderNotes(container, notes, { clef, keySigIndex: keyIndex });
+  const overlay = document.getElementById('staff-overlay');
+  window.setPitchBounds?.(notationStaffBounds(container, overlay));
 }
 
 // ── Pitch frame ──────────────────────────────────────────────────────────
@@ -170,14 +182,14 @@ function onBurstsNoteHit() {
     }
 
     playDing();
-    drawBurst(bursts_notes, bursts_index); // shows all 3 as completed
+    burstsRenderCurrent(); // shows all 3 as completed
     setTimeout(() => {
       if (bursts_active && gameActive && !paused) burstsNextRound();
     }, 500);
   } else {
     // Advance to the next note in the burst
     current = bursts_notes[bursts_index];
-    drawBurst(bursts_notes, bursts_index);
+    burstsRenderCurrent();
   }
 }
 
@@ -185,3 +197,5 @@ window.refreshBurstColors = () => {
   if (!bursts_active) return;
   updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
 };
+
+window.burstsRenderCurrent = burstsRenderCurrent;
