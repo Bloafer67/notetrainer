@@ -496,7 +496,7 @@ svg#staff-svg { width: 100%; display: block; }
 }
 .recap-save-btn:hover { background: var(--border); }
 .recap-play-btn {
-  width: 100%; padding: 15px; border-radius: 12px; margin-top: 12px;
+  width: 100%; padding: 15px; border-radius: 12px; margin-top: 56px;
   background: #185FA5; color: #fff; border: none;
   font-size: 17px; font-weight: 700; font-family: inherit; cursor: pointer;
 }
