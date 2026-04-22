@@ -236,7 +236,10 @@ function nextQuestion() {
   document.getElementById('feedback').textContent = '';
   const notes = noteSet();
   current = notes[Math.floor(Math.random() * notes.length)];
-  renderNotes(document.getElementById('staff-osmd'), [{ name: current.name }], {
+  renderNotes(document.getElementById('staff-osmd'), [{
+    name: current.name,
+    actualName: current.actualName,
+  }], {
     clef, keySigIndex: keyIndex,
   });
   buildChoices(current, notes);
