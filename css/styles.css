@@ -604,9 +604,19 @@ summary {
 summary::-webkit-details-marker { display: none; }
 summary::after { content: '▸'; font-size: 10px; color: var(--text3); }
 details[open] summary::after { content: '▾'; }
-.cheat-sheet { background: var(--bg); border-top: 0.5px solid var(--border); padding: 12px 14px; }
-.mnemonic { background: var(--primary-light); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--primary-text); line-height: 1.6; }
-.mnemonic strong { font-weight: 500; }
+.mnemonic {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--border);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.mnemonic strong {
+  font-weight: 500;
+  color: var(--text);
+}
 
 /* ── Leaderboard game mode tabs ───────────────────────────────────────── */
 .lb-game-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
