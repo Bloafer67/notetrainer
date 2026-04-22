@@ -57,9 +57,12 @@ const NOTATION_PAD_REST = [
   '</note>',
 ].join('');
 
-function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {}) {
+function notationBuildMusicXml(notes, opts = {}) {
+  const clef = opts.clef || 'treble';
+  const keySigIndex = opts.keySigIndex ?? 0;
   const fifths = NOTATION_KEY_FIFTHS[keySigIndex] ?? 0;
   const clefXml = notationClefXml(clef);
+  const padBeats = Math.max(0, Math.round(Number.isFinite(opts.padBeats) ? opts.padBeats : 2));
 
   const noteXml = notes.map(note => {
     const pitchName = clef === 'guitar' && note.actualName
@@ -85,9 +88,8 @@ function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {})
   // Pad with hidden quarter rests so real notes land centered in a wider
   // measure instead of jammed against the clef. `print-object="no"` keeps the
   // rests from rendering glyphs but still reserves horizontal space.
-  const PAD = 2;
-  const padXml = NOTATION_PAD_REST.repeat(PAD);
-  const totalBeats = notes.length + PAD * 2;
+  const padXml = NOTATION_PAD_REST.repeat(padBeats);
+  const totalBeats = notes.length + padBeats * 2;
   const body = padXml + noteXml + padXml;
 
   return [
@@ -251,7 +253,8 @@ function notationReserveKey(container, opts = {}) {
   const clefName = opts.clef || 'treble';
   const rangeMode = opts.rangeMode || 'staff-only';
   const showLabels = opts.showLabels ? 'labels' : 'nolabels';
-  return `${clefName}|${rangeMode}|${showLabels}|${width}`;
+  const padBeats = Math.max(0, Math.round(Number.isFinite(opts.padBeats) ? opts.padBeats : 2));
+  return `${clefName}|${rangeMode}|${showLabels}|${padBeats}|${width}`;
 }
 
 function notationReserveSampleNotes(opts = {}) {
