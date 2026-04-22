@@ -62,7 +62,10 @@ function notationBuildMusicXml(notes, { clef = 'treble', keySigIndex = 0 } = {})
   const clefXml = notationClefXml(clef);
 
   const noteXml = notes.map(note => {
-    const parsed = notationParseNoteName(note.name);
+    const pitchName = clef === 'guitar' && note.actualName
+      ? note.actualName
+      : note.name;
+    const parsed = notationParseNoteName(pitchName);
     if (!parsed) return '';
     const alterXml = parsed.alter ? `<alter>${parsed.alter}</alter>` : '';
     return [

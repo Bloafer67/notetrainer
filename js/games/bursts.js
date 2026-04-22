@@ -116,6 +116,7 @@ async function burstsRenderCurrent() {
   if (!container || !bursts_notes.length) return;
   const notes = bursts_notes.map((n, idx) => ({
     name: n.name,
+    actualName: n.actualName,
     state: idx < bursts_index ? 'done' : idx === bursts_index ? 'current' : 'idle',
   }));
   await renderNotes(container, notes, { clef, keySigIndex: keyIndex });

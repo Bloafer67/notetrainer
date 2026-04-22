@@ -104,7 +104,10 @@ async function ptnNextQuestion() {
 async function ptnRenderCurrent() {
   if (!current) return;
   const container = document.getElementById('staff-osmd');
-  await renderNotes(container, [{ name: current.name }], {
+  await renderNotes(container, [{
+    name: current.name,
+    actualName: current.actualName,
+  }], {
     clef, keySigIndex: keyIndex, showLabels: showNoteNames,
   });
   const overlay = document.getElementById('staff-overlay');
