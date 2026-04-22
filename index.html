@@ -186,9 +186,8 @@
             <span id="mic-status-text">Listening…</span>
           </div>
           <button class="note-names-toggle" id="note-names-toggle" onclick="toggleNoteNames()">Names</button>
-          <svg id="staff-svg" viewBox="0 0 340 170" xmlns="http://www.w3.org/2000/svg"></svg>
-          <div id="staff-osmd" style="display:none; width:100%;"></div>
-          <svg id="staff-overlay" style="display:none; position:absolute; inset:0; width:100%; height:100%; pointer-events:none;" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="staff-osmd" style="width:100%;"></div>
+          <svg id="staff-overlay" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
 
         <!-- Tuner inset — Play the Notes only -->
@@ -338,7 +337,7 @@
   Each file depends on the ones above it being loaded first.
 
   1. Tone.js     — external audio library (CDN)
-  2. staff.js    — KEY_SIGS, note bases, drawStaff()
+  2. staff.js    — KEY_SIGS, note bases
   3. synth.js    — playNote() — needs NOTE_FREQS
   4. pitch.js    — startPitchDetection() — standalone
   5. leaderboard.js — saveToLeaderboard(), fetchLeaderboard()

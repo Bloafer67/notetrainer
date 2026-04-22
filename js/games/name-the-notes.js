@@ -1,7 +1,7 @@
 // ── games/name-the-notes.js ───────────────────────────────────────────────
 // Handles: all Name the Notes game state and logic
 // Depends on: KEY_SIGS, getDrillNotes(), getDrillRangeLabel(), renderNotes(),
-//             setStaffRenderer()
+//             reserveStaffHeight()
 //             playNote (audio/synth.js)
 //             showToast, showAnswerToast, setTimerIcon, setTimerDisplay,
 //             toMMSS, showPregame (main.js)
@@ -133,7 +133,6 @@ function startNameTheNotes() {
   document.getElementById('choices').style.display = 'grid';
   document.getElementById('feedback').textContent = '';
 
-  setStaffRenderer('osmd');
   setTimerIcon('pause');
 
   const saveBtn = document.getElementById('save-btn');
@@ -224,17 +223,29 @@ function noteSet() {
   return getDrillNotes(clef, keyIndex, window.noteRangeMode);
 }
 
-function nextQuestion() {
-  answered = false;
-  document.getElementById('feedback').textContent = '';
-  const notes = noteSet();
-  current = notes[Math.floor(Math.random() * notes.length)];
-  renderNotes(document.getElementById('staff-osmd'), [{
+async function ntnRenderCurrent() {
+  if (!current) return;
+  const container = document.getElementById('staff-osmd');
+  await reserveStaffHeight(container, {
+    clef,
+    keySigIndex: keyIndex,
+    rangeMode: window.noteRangeMode,
+    showLabels: false,
+  });
+  await renderNotes(container, [{
     name: current.name,
     actualName: current.actualName,
   }], {
     clef, keySigIndex: keyIndex,
   });
+}
+
+function nextQuestion() {
+  answered = false;
+  document.getElementById('feedback').textContent = '';
+  const notes = noteSet();
+  current = notes[Math.floor(Math.random() * notes.length)];
+  ntnRenderCurrent();
   buildChoices(current, notes);
   playNote(current.actualName);
 }
@@ -300,6 +311,7 @@ function checkAnswer(chosen, btn) {
 }
 
 window.refreshChoiceButtonColors = refreshChoiceButtonColors;
+window.ntnRenderCurrent = ntnRenderCurrent;
 
 // ── Confetti ──────────────────────────────────────────────────────────────
 function launchConfetti() {

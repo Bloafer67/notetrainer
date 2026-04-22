@@ -139,6 +139,8 @@ function notationAddLyrics(doc, notes) {
 }
 
 const NOTATION_OSMD_INSTANCES = new WeakMap();
+const NOTATION_RESERVED_HEIGHTS = new Map();
+let notationMeasureHost = null;
 
 function notationThemeOptions() {
   const accent = darkMode ? '#b4b2a9' : '#1a1a18';
@@ -152,13 +154,7 @@ function notationThemeOptions() {
   };
 }
 
-async function renderNotes(container, notes, opts = {}) {
-  if (!container || !Array.isArray(notes) || notes.length === 0) return null;
-  if (typeof opensheetmusicdisplay === 'undefined') {
-    console.error('renderNotes: OpenSheetMusicDisplay not loaded');
-    return null;
-  }
-
+function notationGetOsmd(container) {
   let osmd = NOTATION_OSMD_INSTANCES.get(container);
   if (!osmd) {
     osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
@@ -176,6 +172,17 @@ async function renderNotes(container, notes, opts = {}) {
   } else {
     osmd.setOptions(notationThemeOptions());
   }
+  return osmd;
+}
+
+async function notationRenderIntoContainer(container, notes, opts = {}) {
+  if (!container || !Array.isArray(notes) || notes.length === 0) return null;
+  if (typeof opensheetmusicdisplay === 'undefined') {
+    console.error('renderNotes: OpenSheetMusicDisplay not loaded');
+    return null;
+  }
+
+  const osmd = notationGetOsmd(container);
 
   const xml = notationBuildMusicXml(notes, opts);
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -202,21 +209,104 @@ async function renderNotes(container, notes, opts = {}) {
   if (renderedSvg) {
     renderedSvg.style.display = 'block';
     renderedSvg.style.margin = '0 auto';
+    notationCenterStaffInContainer(container, renderedSvg);
   }
 
   return osmd;
 }
 
-// Swap between the legacy custom-SVG staff (`#staff-svg`) and the OSMD
-// container (`#staff-osmd`). Games being migrated call this with 'osmd'; the
-// rest call it with 'svg' so they keep working during the phased rollout.
-function setStaffRenderer(kind) {
-  const svg = document.getElementById('staff-svg');
-  const div = document.getElementById('staff-osmd');
-  const overlay = document.getElementById('staff-overlay');
-  if (svg) svg.style.display = kind === 'osmd' ? 'none' : '';
-  if (div) div.style.display = kind === 'osmd' ? '' : 'none';
-  if (overlay) overlay.style.display = kind === 'osmd' ? '' : 'none';
+function notationCenterStaffInContainer(container, renderedSvg) {
+  if (!container || !renderedSvg) return;
+
+  renderedSvg.style.transform = 'translateY(0px)';
+
+  const bounds = notationStaffBounds(container);
+  if (!bounds) return;
+
+  const containerHeight = container.clientHeight || Math.ceil(container.getBoundingClientRect().height);
+  if (!containerHeight) return;
+
+  const staffCenterY = (bounds.topY + bounds.botY) / 2;
+  const targetCenterY = containerHeight / 2;
+  const deltaY = Math.round((targetCenterY - staffCenterY) * 10) / 10;
+
+  renderedSvg.style.transform = `translateY(${deltaY}px)`;
+}
+
+function notationMeasureHostEl() {
+  if (notationMeasureHost) return notationMeasureHost;
+  notationMeasureHost = document.createElement('div');
+  notationMeasureHost.style.position = 'absolute';
+  notationMeasureHost.style.left = '-99999px';
+  notationMeasureHost.style.top = '0';
+  notationMeasureHost.style.visibility = 'hidden';
+  notationMeasureHost.style.pointerEvents = 'none';
+  notationMeasureHost.style.contain = 'layout style';
+  document.body.appendChild(notationMeasureHost);
+  return notationMeasureHost;
+}
+
+function notationReserveKey(container, opts = {}) {
+  const width = Math.max(320, Math.round(container.getBoundingClientRect().width || container.clientWidth || 0));
+  const clefName = opts.clef || 'treble';
+  const rangeMode = opts.rangeMode || 'staff-only';
+  const showLabels = opts.showLabels ? 'labels' : 'nolabels';
+  return `${clefName}|${rangeMode}|${showLabels}|${width}`;
+}
+
+function notationReserveSampleNotes(opts = {}) {
+  const clefName = opts.clef || 'treble';
+  const rangeMode = opts.rangeMode || 'staff-only';
+  const keySigIndex = opts.keySigIndex || 0;
+  const notes = getDrillNotes(clefName, keySigIndex, rangeMode);
+  if (!notes.length) return [];
+
+  let lowest = notes[0];
+  let highest = notes[0];
+  notes.forEach(note => {
+    if (note.step < lowest.step) lowest = note;
+    if (note.step > highest.step) highest = note;
+  });
+
+  if (lowest === highest) return [lowest];
+  return [lowest, highest];
+}
+
+async function reserveStaffHeight(container, opts = {}) {
+  if (!container || typeof document === 'undefined' || typeof opensheetmusicdisplay === 'undefined') {
+    return null;
+  }
+
+  const cacheKey = notationReserveKey(container, opts);
+  const cachedHeight = NOTATION_RESERVED_HEIGHTS.get(cacheKey);
+  if (cachedHeight) {
+    container.style.minHeight = `${cachedHeight}px`;
+    return cachedHeight;
+  }
+
+  const sampleNotes = notationReserveSampleNotes(opts);
+  if (!sampleNotes.length) return null;
+
+  const host = notationMeasureHostEl();
+  host.style.width = `${Math.max(320, Math.round(container.getBoundingClientRect().width || container.clientWidth || 0))}px`;
+  host.innerHTML = '';
+
+  const measureContainer = document.createElement('div');
+  measureContainer.style.width = '100%';
+  host.appendChild(measureContainer);
+
+  await notationRenderIntoContainer(measureContainer, sampleNotes, opts);
+
+  const measuredHeight = Math.ceil(measureContainer.getBoundingClientRect().height);
+  if (!measuredHeight) return null;
+
+  NOTATION_RESERVED_HEIGHTS.set(cacheKey, measuredHeight);
+  container.style.minHeight = `${measuredHeight}px`;
+  return measuredHeight;
+}
+
+async function renderNotes(container, notes, opts = {}) {
+  return notationRenderIntoContainer(container, notes, opts);
 }
 
 // ── Pitch-overlay helpers ───────────────────────────────────────────────────
@@ -309,7 +399,7 @@ function notationDrawPitchArrow(overlay, { direction, color, centerX, topY, botY
 }
 
 window.renderNotes = renderNotes;
-window.setStaffRenderer = setStaffRenderer;
+window.reserveStaffHeight = reserveStaffHeight;
 window.notationStaffBounds = notationStaffBounds;
 window.notationYForStep = notationYForStep;
 window.notationClearOverlay = notationClearOverlay;

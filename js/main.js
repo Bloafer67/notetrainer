@@ -11,18 +11,9 @@ function refreshNotationColors() {
   if (window.gameMode === 'bursts' && window.burstNotes?.length) {
     window.burstsRenderCurrent?.();
   } else if (window.gameMode === 'name-the-notes' && window.current) {
-    renderNotes(document.getElementById('staff-osmd'), [{
-      name: window.current.name,
-      actualName: window.current.actualName,
-    }], {
-      clef, keySigIndex: keyIndex,
-    });
+    window.ntnRenderCurrent?.();
   } else if (window.gameMode === 'play-the-notes' && window.current) {
     window.ptnRenderCurrent?.();
-  } else if (window.current) {
-    drawStaff(window.current, {
-      showLabel: showNoteNames && window.gameMode === 'play-the-notes',
-    });
   }
   window.refreshChoiceButtonColors?.();
   window.refreshPitchGuideColors?.();
