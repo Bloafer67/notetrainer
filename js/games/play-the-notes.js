@@ -195,7 +195,7 @@ function playDing() {
 
 // ── Pitch line / arrows ───────────────────────────────────────────────────
 function updatePitchLineOrArrow(hz, color) {
-  const lineColor = color || '#185FA5';
+  const lineColor = color || '#0171E3';
   const overlay = document.getElementById('staff-overlay');
   if (!overlay) return;
   notationClearOverlay(overlay);
@@ -276,7 +276,7 @@ function updateTuner(cents, active) {
     needle.style.background = '#1D9E75'; // teal — in range
     label.textContent = (cents > 0 ? '+' : '') + Math.round(cents) + '¢';
   } else {
-    needle.style.background = '#185FA5'; // blue — out of range
+    needle.style.background = '#0171E3'; // blue — out of range
     label.textContent = (cents > 0 ? 'Sharp ' : 'Flat ') + Math.abs(Math.round(cents)) + '¢';
   }
 }

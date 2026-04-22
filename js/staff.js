@@ -171,9 +171,9 @@ function getNoteLetter(noteOrName) {
 }
 
 function getNotePalette(noteOrName) {
-  const monoPitch = darkMode ? '#378ADD' : '#185FA5';
+  const monoPitch = '#0171E3';
   const monoNote = darkMode ? '#e0dfd8' : '#1a1a18';
-  const monoLabel = darkMode ? '#6FB6FF' : '#185FA5';
+  const monoLabel = darkMode ? '#8AC6FF' : '#0171E3';
   const mono = {
     noteFill: monoNote,
     noteStroke: monoNote,
