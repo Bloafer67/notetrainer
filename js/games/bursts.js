@@ -57,14 +57,7 @@ async function startBursts() {
 
   document.getElementById('score').textContent  = '0';
   document.getElementById('streak').textContent = '0';
-  setTimerDisplay(gameDuration);
-
-  const circ = 2 * Math.PI * 27;
-  const prog = document.getElementById('timer-prog');
-  prog.style.strokeDasharray  = circ;
-  prog.style.strokeDashoffset = '0';
-  prog.style.stroke = '';
-  prog.className = 'timer-prog';
+  resetTimerCountdown(gameDuration);
 
   document.getElementById('pregame-screen').classList.remove('show');
   document.getElementById('active-game').style.display = 'flex';
