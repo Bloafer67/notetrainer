@@ -284,6 +284,17 @@ function setTimerDisplay(secs) {
   label.className = secs <= 10 ? 'timer-time-label warning' : 'timer-time-label';
 }
 
+function resetTimerCountdown(totalSecs) {
+  setTimerDisplay(totalSecs);
+  const prog = document.getElementById('timer-prog');
+  if (!prog) return;
+  const circ = 2 * Math.PI * 27;
+  prog.style.strokeDasharray = circ;
+  prog.style.strokeDashoffset = '0';
+  prog.style.stroke = '';
+  prog.className = 'timer-prog';
+}
+
 function toMMSS(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;

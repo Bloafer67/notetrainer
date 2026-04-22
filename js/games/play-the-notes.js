@@ -52,12 +52,7 @@ async function startPlayTheNotes() {
 
   document.getElementById('score').textContent  = '0';
   document.getElementById('streak').textContent = '0';
-  setTimerDisplay(gameDuration);
-
-  const circ = 2 * Math.PI * 27;
-  document.getElementById('timer-prog').style.strokeDasharray  = circ;
-  document.getElementById('timer-prog').style.strokeDashoffset = '0';
-  document.getElementById('timer-prog').className = 'timer-prog';
+  resetTimerCountdown(gameDuration);
 
   document.getElementById('pregame-screen').classList.remove('show');
   document.getElementById('active-game').style.display = 'flex';
