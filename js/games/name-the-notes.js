@@ -352,10 +352,23 @@ function launchConfetti() {
 
 // ── Share ─────────────────────────────────────────────────────────────────
 function shareScore() {
+  const result = window.lastResult;
   const clefLabel = clef === 'guitar'
     ? 'Guitar (8vb)'
     : clef.charAt(0).toUpperCase() + clef.slice(1);
   const mode = window.gameMode || 'name-the-notes';
+  if (mode === 'play-along' && result) {
+    const songTitle = songLabel(result.song || window.lastPlayAlongSongKey);
+    const notes = Number(result.score) || 0;
+    const noteLabel = notes === 1 ? 'note' : 'notes';
+    const text = `🎵 Play Along\n⭐ ${formatElapsedMs(result.time_ms, true)} · ${formatAccuracy(result.accuracy)} accuracy\n${songTitle} · ${notes} ${noteLabel}\nhttps://notetrainer-eight.vercel.app`;
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
+    }
+    return;
+  }
   const titleMap = {
     'name-the-notes': '🎼 Name the Notes',
     'play-the-notes': '🎸 Play the Notes',

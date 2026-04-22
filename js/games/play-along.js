@@ -107,6 +107,16 @@ function paUpdateElapsedTime(finalize = false) {
   if (timeEl) timeEl.textContent = formatElapsedMs(pa_elapsedMs);
 }
 
+function paFinalMetrics() {
+  const elapsedMs = Math.max(0, pa_startedAt ? performance.now() - pa_startedAt : pa_elapsedMs);
+  return {
+    elapsedMs: Math.round(elapsedMs),
+    accuracy: paAccuracy(),
+    notes: pa_correctNotes,
+    misses: pa_wrongAttempts,
+  };
+}
+
 function paUpdateSummary() {
   paUpdateElapsedTime();
 
@@ -133,9 +143,9 @@ function paSetStaffVisible(visible) {
 }
 
 function paResetSaveControls() {
-  const form = document.getElementById('pa-complete-form');
-  const nameInput = document.getElementById('pa-player-name');
-  const saveBtn = document.getElementById('pa-save-btn');
+  const form = document.getElementById('recap-form');
+  const nameInput = document.getElementById('player-name');
+  const saveBtn = document.getElementById('save-btn');
   if (form) form.style.display = 'none';
   if (nameInput) nameInput.value = '';
   if (saveBtn) {
@@ -531,9 +541,7 @@ function pa_onNoteHit() {
   paClearWrongTimer(true);
   paUpdateSummary();
   if (typeof playDing === 'function') playDing();
-  setTimeout(() => {
-    if (pa_active) pa_advance();
-  }, 120);
+  pa_advance();
 }
 
 function pa_advance() {
@@ -551,48 +559,38 @@ function pa_advance() {
 }
 
 function pa_onSongComplete() {
-  paUpdateElapsedTime(true);
-  clearInterval(pa_timerInterval);
-  pa_timerInterval = null;
-  pa_active = false;
-  stopPitchDetection();
-  paClearHitTimer();
-  paClearWrongTimer(true);
-
-  const { micEl } = paGetMicElements();
-  if (micEl) micEl.style.display = 'none';
+  const finalMetrics = paFinalMetrics();
+  pa_elapsedMs = finalMetrics.elapsedMs;
+  stopPlayAlong();
 
   window.lastResult = {
     game: 'play-along',
     song: pa_songKey,
-    score: pa_correctNotes,
-    time_ms: Math.round(pa_elapsedMs),
-    accuracy: paAccuracy(),
+    score: finalMetrics.notes,
+    time_ms: finalMetrics.elapsedMs,
+    accuracy: finalMetrics.accuracy,
   };
 
-  const complete = document.getElementById('pa-complete');
-  const controls = document.getElementById('pa-controls-row');
-  const feedback = document.getElementById('pa-feedback');
-  const timeNum = document.getElementById('pa-complete-time-num');
-  const accuracyNum = document.getElementById('pa-complete-accuracy-num');
-  const notesNum = document.getElementById('pa-complete-notes-num');
-  const missesNum = document.getElementById('pa-complete-misses-num');
-  const form = document.getElementById('pa-complete-form');
-  const nameInput = document.getElementById('pa-player-name');
-  const saveBtn = document.getElementById('pa-save-btn');
+  const title = pa_song?.meta?.title || 'Play Along';
+  const noteLabel = finalMetrics.notes === 1 ? 'note' : 'notes';
+  const missLabel = finalMetrics.misses === 1 ? 'miss' : 'misses';
+  const recap = document.getElementById('recap-view');
+  const recapForm = document.getElementById('recap-form');
+  const nameInput = document.getElementById('player-name');
+  const saveBtn = document.getElementById('save-btn');
 
-  if (timeNum) timeNum.textContent = formatElapsedMs(pa_elapsedMs, true);
-  if (accuracyNum) accuracyNum.textContent = formatAccuracy(paAccuracy());
-  if (notesNum) notesNum.textContent = pa_correctNotes;
-  if (missesNum) missesNum.textContent = pa_wrongAttempts;
-  if (complete) complete.style.display = 'flex';
-  if (controls) controls.style.display = 'none';
-  if (feedback) feedback.textContent = '';
-  document.getElementById('recap-view').classList.remove('show');
-  paSetStaffVisible(false);
+  document.getElementById('pa-active').style.display = 'none';
+  document.getElementById('active-game').style.display = 'none';
+  document.getElementById('pregame-screen').classList.remove('show');
+  document.getElementById('recap-score').textContent = formatElapsedMs(finalMetrics.elapsedMs, true);
+  document.getElementById('recap-sub-line').textContent =
+    `${title} · ${formatAccuracy(finalMetrics.accuracy)} accuracy`;
+  document.getElementById('recap-streak-line').textContent =
+    `${finalMetrics.notes} ${noteLabel} played · ${finalMetrics.misses} ${missLabel}`;
+  document.getElementById('recap-new-best').style.display = 'none';
 
   const qualifies = doesResultQualify(window.lastResult);
-  if (form) form.style.display = qualifies ? 'flex' : 'none';
+  if (recapForm) recapForm.style.display = qualifies ? 'flex' : 'none';
   if (qualifies) {
     const savedName = localStorage.getItem('mntr-playername') || '';
     if (nameInput) nameInput.value = savedName;
@@ -603,6 +601,7 @@ function pa_onSongComplete() {
     }
   }
 
+  if (recap) recap.classList.add('show');
   if (typeof launchConfetti === 'function') setTimeout(launchConfetti, 100);
 }
 
