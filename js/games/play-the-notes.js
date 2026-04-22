@@ -65,7 +65,6 @@ async function startPlayTheNotes() {
   // Tuner hidden — pitch feedback shown via line color instead
   showTuner(false);
 
-  setStaffRenderer('osmd');
   setTimerIcon('pause');
   loadBest();
   ptnNextQuestion();
@@ -99,6 +98,12 @@ async function ptnNextQuestion() {
 async function ptnRenderCurrent() {
   if (!current) return;
   const container = document.getElementById('staff-osmd');
+  await reserveStaffHeight(container, {
+    clef,
+    keySigIndex: keyIndex,
+    rangeMode: window.noteRangeMode,
+    showLabels: showNoteNames,
+  });
   await renderNotes(container, [{
     name: current.name,
     actualName: current.actualName,

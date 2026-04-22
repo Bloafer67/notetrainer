@@ -68,7 +68,6 @@ async function startBursts() {
   document.getElementById('feedback').textContent  = '';
 
   showTuner(false);
-  setStaffRenderer('osmd');
   setTimerIcon('pause');
   loadBest();
   burstsNextRound();
@@ -107,6 +106,12 @@ async function burstsNextRound() {
 async function burstsRenderCurrent() {
   const container = document.getElementById('staff-osmd');
   if (!container || !bursts_notes.length) return;
+  await reserveStaffHeight(container, {
+    clef,
+    keySigIndex: keyIndex,
+    rangeMode: window.noteRangeMode,
+    showLabels: false,
+  });
   const notes = bursts_notes.map((n, idx) => ({
     name: n.name,
     actualName: n.actualName,

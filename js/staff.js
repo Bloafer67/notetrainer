@@ -17,11 +17,6 @@ const KEY_SIGS = [
   { label:'Ab major',short:'Ab', acc:{B:'b',E:'b',A:'b',D:'b'} },
 ];
 
-const KS_POSITIONS = {
-  treble: { sharps:[8,5,9,6,3,7,4], flats:[4,7,3,6,2,5,1] },
-  bass:   { sharps:[6,3,7,4,1,5,2], flats:[2,5,1,4,0,3,6] },
-};
-
 // ── Drill note sets ───────────────────────────────────────────────────────
 // Step 0 = bottom line for the active clef. Staff-only keeps notes on the
 // 5-line staff; full-range adds ledger lines above and below.
@@ -39,8 +34,6 @@ const TREBLE_FULL_BASE = [
   {name:'E6',step:14},
 ];
 
-const TREBLE_BASE = TREBLE_STAFF_BASE;
-
 const BASS_STAFF_BASE = [
   {name:'G2',step:0},{name:'A2',step:1},{name:'B2',step:2},{name:'C3',step:3},
   {name:'D3',step:4},{name:'E3',step:5},{name:'F3',step:6},{name:'G3',step:7},{name:'A3',step:8},
@@ -54,8 +47,6 @@ const BASS_FULL_BASE = [
   {name:'C4',step:10},{name:'D4',step:11},{name:'E4',step:12},{name:'F4',step:13},
   {name:'G4',step:14},
 ];
-
-const BASS_BASE = BASS_STAFF_BASE;
 
 // Guitar 8vb: treble clef + "8" underneath.
 // Notes are written at treble positions but sound one octave lower.
@@ -95,8 +86,6 @@ const GUITAR_FULL_BASE = [
   {name:'E6', step:14, soundName:'E5'},
 ];
 
-const GUITAR_BASE = GUITAR_FULL_BASE;
-
 const GUITAR_STAFF_BASE = [
   {name:'A3', step:-4, soundName:'A2'},
   {name:'B3', step:-3, soundName:'B2'},
@@ -111,8 +100,6 @@ const GUITAR_STAFF_BASE = [
   {name:'D5', step:6,  soundName:'D4'},
   {name:'E5', step:7,  soundName:'E4'},
 ];
-
-const GUITAR_GAME_BASE = GUITAR_STAFF_BASE;
 
 const DRILL_RANGE_MODES = {
   'staff-only': { label:'Staff Only' },
@@ -166,16 +153,6 @@ function applyKey(base, acc) {
   });
 }
 
-// Convert staff step → SVG y coordinate
-const STAFF_VIEWBOX_WIDTH = 340;
-const STAFF_VIEWBOX_HEIGHT = 170;
-const STAFF_TOP_LINE = 50;
-const STAFF_GAP = 12;
-
-function noteYPos(step, topLine, gap) {
-  return topLine + 4 * gap - step * (gap / 2);
-}
-
 const BOOMWHACKER_PALETTE = {
   C: { noteFill:'#F15B5B', noteStroke:'#A52B2B', label:'#A52B2B', buttonBg:'#F15B5B', buttonText:'#FFFFFF', pitch:'#D94848' },
   D: { noteFill:'#F59D3D', noteStroke:'#B45C05', label:'#9A4F00', buttonBg:'#F59D3D', buttonText:'#FFFFFF', pitch:'#D47F1F' },
@@ -207,229 +184,4 @@ function getNotePalette(noteOrName) {
   };
   if (!window.boomwhackerMode) return mono;
   return BOOMWHACKER_PALETTE[getNoteLetter(noteOrName)] || mono;
-}
-
-// ── Draw staff ────────────────────────────────────────────────────────────
-function drawStaff(note, opts = {}) {
-  const svg = document.getElementById('staff-svg');
-  svg.innerHTML = '';
-  svg.setAttribute('viewBox', `0 0 ${STAFF_VIEWBOX_WIDTH} ${STAFF_VIEWBOX_HEIGHT}`);
-
-  const topLine = STAFF_TOP_LINE;
-  const gap = STAFF_GAP;
-  const ns = 'http://www.w3.org/2000/svg';
-
-  const lineCol   = darkMode ? '#666' : '#888';
-  const clefCol   = darkMode ? '#aaa' : '#666';
-  const ledgerCol = darkMode ? '#999' : '#444';
-  const accCol    = darkMode ? '#aaa' : '#444';
-  const notePalette = getNotePalette(note);
-
-  function el(tag, attrs, text) {
-    const e = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
-
-  // Five staff lines
-  for (let i = 0; i < 5; i++) {
-    const y = topLine + i * gap;
-    svg.appendChild(el('line', {x1:40,x2:320,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
-  }
-
-  // Clef
-  if (clef === 'bass') {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol}, '𝄢'));
-  } else {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol}, '𝄞'));
-    if (clef === 'guitar') {
-      svg.appendChild(el('text', {x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'}, '8'));
-    }
-  }
-
-  // Key signature
-  const acc = KEY_SIGS[keyIndex].acc;
-  const accLetters = Object.keys(acc);
-  if (accLetters.length > 0) {
-    const isSharp  = acc[accLetters[0]] === '#';
-    const clefType = clef === 'bass' ? 'bass' : 'treble';
-    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
-    const symbol = isSharp ? '♯' : '♭';
-    let ksx = 46;
-    accLetters.forEach((_, i) => {
-      const ky = noteYPos(positions[i], topLine, gap);
-      svg.appendChild(el('text', {x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'}, symbol));
-      ksx += 10;
-    });
-  }
-
-  // Note position
-  const noteCx = accLetters.length > 0 ? 195 : 180;
-  const cy = noteYPos(note.step, topLine, gap);
-  const r  = 7;
-
-  // Ledger lines — below staff at steps -2, -4, -6...; above staff at steps 10, 12...
-  // Step 0 = E4 (bottom line), step 8 = F5 (top line) — no ledger needed there.
-  const ledgerSteps = [];
-  for (let s = -2; s >= note.step; s -= 2) ledgerSteps.push(s);
-  for (let s = 10; s <= note.step; s += 2) ledgerSteps.push(s);
-
-  [...new Set(ledgerSteps)].forEach(s => {
-    const ly = noteYPos(s, topLine, gap);
-    svg.appendChild(el('line', {
-      x1:noteCx-r-4, x2:noteCx+r+4, y1:ly, y2:ly,
-      stroke:ledgerCol, 'stroke-width':'1.5',
-    }));
-  });
-
-  // Stem
-  const stemUp = note.step < 4;
-  svg.appendChild(el('line', {
-    x1:stemUp?noteCx+r-1:noteCx-r+1,
-    x2:stemUp?noteCx+r-1:noteCx-r+1,
-    y1:cy, y2:stemUp?cy-32:cy+32,
-    stroke:notePalette.noteStroke,'stroke-width':'1.5',
-  }));
-
-  // Note head sits above the stem so the overlap reads cleanly.
-  svg.appendChild(el('ellipse', {
-    cx:noteCx, cy,
-    rx:r, ry:Math.round(r*0.72),
-    fill:notePalette.noteFill,
-    stroke:notePalette.noteStroke,
-    'stroke-width':'1.2',
-    transform:`rotate(-15,${noteCx},${cy})`,
-  }));
-
-  // Note name label (shown in PTN mode or if opts.showLabel)
-  if (opts.showLabel) {
-    const preferredLabelY = stemUp ? cy + r + 14 : cy - r - 6;
-    const labelY = Math.max(12, Math.min(STAFF_VIEWBOX_HEIGHT - 10, preferredLabelY));
-    svg.appendChild(el('text', {
-      x:noteCx, y:labelY,
-      'font-size':'11', 'font-weight':'600',
-      fill:notePalette.label, 'text-anchor':'middle',
-      'font-family':'-apple-system,BlinkMacSystemFont,sans-serif',
-    }, note.name));
-  }
-}
-
-// ── Draw burst (multiple notes at once) ──────────────────────────────────
-// Renders 3+ notes evenly spaced across the staff, with the active one
-// highlighted in blue and completed ones drawn dimmed/green.
-function drawBurst(notes, currentIndex) {
-  const svg = document.getElementById('staff-svg');
-  if (!svg) return;
-  svg.innerHTML = '';
-  svg.setAttribute('viewBox', `0 0 ${STAFF_VIEWBOX_WIDTH} ${STAFF_VIEWBOX_HEIGHT}`);
-
-  const topLine = STAFF_TOP_LINE;
-  const gap = STAFF_GAP;
-  const ns = 'http://www.w3.org/2000/svg';
-
-  const lineCol      = darkMode ? '#666' : '#888';
-  const clefCol      = darkMode ? '#aaa' : '#666';
-  const ledgerCol    = darkMode ? '#999' : '#444';
-  const noteColIdle  = darkMode ? '#e0dfd8' : '#1a1a18';
-  const noteColDone  = darkMode ? '#3B6D11' : '#639922';
-  const noteColCurr  = getNotePalette(notes[currentIndex]).pitch;
-  const accCol       = darkMode ? '#aaa' : '#444';
-
-  function el(tag, attrs, text) {
-    const e = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
-
-  // Five staff lines
-  for (let i = 0; i < 5; i++) {
-    const y = topLine + i * gap;
-    svg.appendChild(el('line', {x1:40,x2:320,y1:y,y2:y,stroke:lineCol,'stroke-width':'1'}));
-  }
-
-  // Clef
-  if (clef === 'bass') {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*2,'font-size':'30',fill:clefCol}, '𝄢'));
-  } else {
-    svg.appendChild(el('text', {x:'8',y:topLine+gap*4+4,'font-size':'52',fill:clefCol}, '𝄞'));
-    if (clef === 'guitar') {
-      svg.appendChild(el('text', {x:'18',y:topLine+gap*4+18,'font-size':'10',fill:clefCol,'font-weight':'500'}, '8'));
-    }
-  }
-
-  // Key signature
-  const acc = KEY_SIGS[keyIndex].acc;
-  const accLetters = Object.keys(acc);
-  if (accLetters.length > 0) {
-    const isSharp  = acc[accLetters[0]] === '#';
-    const clefType = clef === 'bass' ? 'bass' : 'treble';
-    const positions = isSharp ? KS_POSITIONS[clefType].sharps : KS_POSITIONS[clefType].flats;
-    const symbol = isSharp ? '♯' : '♭';
-    let ksx = 46;
-    accLetters.forEach((_, i) => {
-      const ky = noteYPos(positions[i], topLine, gap);
-      svg.appendChild(el('text', {x:ksx,y:ky+5,'font-size':'12',fill:accCol,'font-weight':'500'}, symbol));
-      ksx += 10;
-    });
-  }
-
-  // Note positions — evenly spaced across writable area
-  const startX = accLetters.length > 0 ? 130 : 115;
-  const endX   = 300;
-  const r      = 7;
-  const count  = notes.length;
-
-  notes.forEach((note, idx) => {
-    const noteCx = count === 1
-      ? (startX + endX) / 2
-      : startX + (endX - startX) * (idx / (count - 1));
-    const cy = noteYPos(note.step, topLine, gap);
-
-    const notePalette = getNotePalette(note);
-    let fillCol = window.boomwhackerMode ? notePalette.noteFill : noteColIdle;
-    let strokeCol = window.boomwhackerMode ? notePalette.noteStroke : fillCol;
-    let opacity = '0.4';
-    if (idx === currentIndex) {
-      fillCol = noteColCurr;
-      strokeCol = window.boomwhackerMode ? notePalette.noteStroke : noteColCurr;
-      opacity = '1';
-    } else if (idx < currentIndex) {
-      fillCol = noteColDone;
-      strokeCol = noteColDone;
-      opacity = '0.85';
-    }
-
-    // Ledger lines
-    const ledgerSteps = [];
-    for (let s = -2; s >= note.step; s -= 2) ledgerSteps.push(s);
-    for (let s = 10; s <= note.step; s += 2) ledgerSteps.push(s);
-    [...new Set(ledgerSteps)].forEach(s => {
-      const ly = noteYPos(s, topLine, gap);
-      svg.appendChild(el('line', {
-        x1:noteCx-r-4, x2:noteCx+r+4, y1:ly, y2:ly,
-        stroke:ledgerCol, 'stroke-width':'1.5', opacity,
-      }));
-    });
-
-    // Stem
-    const stemUp = note.step < 4;
-    svg.appendChild(el('line', {
-      x1:stemUp?noteCx+r-1:noteCx-r+1,
-      x2:stemUp?noteCx+r-1:noteCx-r+1,
-      y1:cy, y2:stemUp?cy-32:cy+32,
-      stroke:strokeCol,'stroke-width':'1.5', opacity,
-    }));
-
-    svg.appendChild(el('ellipse', {
-      cx:noteCx, cy,
-      rx:r, ry:Math.round(r*0.72),
-      fill:fillCol,
-      stroke:strokeCol,
-      'stroke-width':'1.2',
-      opacity,
-      transform:`rotate(-15,${noteCx},${cy})`,
-    }));
-  });
 }
