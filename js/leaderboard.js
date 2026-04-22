@@ -120,7 +120,8 @@ function doesResultQualify(result, key = currentBoardKey()) {
 }
 
 function getLeaderboardSaveElements() {
-  if (window.lastResult?.game === 'play-along') {
+  const recapVisible = document.getElementById('recap-view')?.classList.contains('show');
+  if (window.lastResult?.game === 'play-along' && !recapVisible) {
     return {
       nameEl: document.getElementById('pa-player-name'),
       saveBtn: document.getElementById('pa-save-btn'),
