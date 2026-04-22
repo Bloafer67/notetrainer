@@ -209,12 +209,30 @@ async function notationRenderIntoContainer(container, notes, opts = {}) {
   // aligns its output which can leave unbalanced whitespace on one side.
   const renderedSvg = container.querySelector('svg');
   if (renderedSvg) {
-    renderedSvg.style.display = 'block';
-    renderedSvg.style.margin = '0 auto';
+    notationFitRenderedMeasure(container, renderedSvg);
     notationCenterStaffInContainer(container, renderedSvg);
   }
 
   return osmd;
+}
+
+function notationFitRenderedMeasure(container, renderedSvg) {
+  if (!container || !renderedSvg) return;
+
+  // OSMD emits a fixed-width page wrapper around the SVG. Clamp both the
+  // wrapper and the SVG so single-staff games stay within the card on narrow
+  // screens instead of overflowing to the right.
+  const pageEl = renderedSvg.parentElement;
+  if (pageEl) {
+    pageEl.style.width = '100%';
+    pageEl.style.maxWidth = '100%';
+  }
+
+  renderedSvg.style.display = 'block';
+  renderedSvg.style.width = '100%';
+  renderedSvg.style.maxWidth = '100%';
+  renderedSvg.style.height = 'auto';
+  renderedSvg.style.margin = '0 auto';
 }
 
 function notationCenterStaffInContainer(container, renderedSvg) {
