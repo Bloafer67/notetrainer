@@ -111,13 +111,18 @@ async function burstsRenderCurrent() {
     keySigIndex: keyIndex,
     rangeMode: window.noteRangeMode,
     showLabels: false,
+    padBeats: 1,
   });
   const notes = bursts_notes.map((n, idx) => ({
     name: n.name,
     actualName: n.actualName,
     state: idx < bursts_index ? 'done' : idx === bursts_index ? 'current' : 'idle',
   }));
-  await renderNotes(container, notes, { clef, keySigIndex: keyIndex });
+  await renderNotes(container, notes, {
+    clef,
+    keySigIndex: keyIndex,
+    padBeats: 1,
+  });
   const overlay = document.getElementById('staff-overlay');
   window.setPitchBounds?.(notationStaffBounds(container, overlay));
 }
