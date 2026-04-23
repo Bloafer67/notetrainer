@@ -19,7 +19,7 @@ function burstsGuideColor(hz = bursts_smoothHz) {
   if (!hz) return getNotePalette(target.name).pitch;
   const targetHz = NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name];
   const cents = targetHz ? Math.abs(1200 * Math.log2(hz / targetHz)) : 999;
-  return cents <= BURSTS_HIT_CENTS ? '#1D9E75' : getNotePalette(target.name).pitch;
+  return cents <= BURSTS_HIT_CENTS ? themeColor('pitch-hit') : getNotePalette(target.name).pitch;
 }
 
 // Expose to window so main.js applyTheme can redraw on theme change

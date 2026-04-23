@@ -18,7 +18,7 @@ function ptnGuideColor(hz = ptn_smoothHz) {
   if (!hz) return getNotePalette(current.name).pitch;
   const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
   const cents = targetHz ? Math.abs(1200 * Math.log2(hz / targetHz)) : 999;
-  return cents <= HIT_THRESHOLD_CENTS ? '#1D9E75' : getNotePalette(current.name).pitch;
+  return cents <= HIT_THRESHOLD_CENTS ? themeColor('pitch-hit') : getNotePalette(current.name).pitch;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ function playDing() {
 
 // ── Pitch line / arrows ───────────────────────────────────────────────────
 function updatePitchLineOrArrow(hz, color) {
-  const lineColor = color || '#0171E3';
+  const lineColor = color || themeColor('pitch-default');
   const overlay = document.getElementById('staff-overlay');
   if (!overlay) return;
   notationClearOverlay(overlay);
@@ -237,7 +237,7 @@ function removePitchLine() {
 function flashPitchLineGreen() {
   const line = document.getElementById('pitch-line');
   if (!line) return;
-  line.setAttribute('stroke', '#3B6D11');
+  line.setAttribute('stroke', themeColor('pitch-close'));
   setTimeout(() => {
     if (line.parentNode) line.setAttribute('stroke', ptnGuideColor());
   }, 400);
@@ -258,7 +258,7 @@ function updateTuner(cents, active) {
 
   if (!active) {
     needle.style.left = '50%';
-    needle.style.background = 'var(--border2)';
+    needle.style.background = themeColor('border2');
     label.textContent = '—';
     return;
   }
@@ -270,13 +270,13 @@ function updateTuner(cents, active) {
 
   const absCents = Math.abs(cents);
   if (absCents <= 15) {
-    needle.style.background = '#3B6D11'; // green — very close
+    needle.style.background = themeColor('pitch-close');
     label.textContent = '✓';
   } else if (absCents <= HIT_THRESHOLD_CENTS) {
-    needle.style.background = '#1D9E75'; // teal — in range
+    needle.style.background = themeColor('pitch-hit');
     label.textContent = (cents > 0 ? '+' : '') + Math.round(cents) + '¢';
   } else {
-    needle.style.background = '#0171E3'; // blue — out of range
+    needle.style.background = themeColor('pitch-default');
     label.textContent = (cents > 0 ? 'Sharp ' : 'Flat ') + Math.abs(Math.round(cents)) + '¢';
   }
 }
