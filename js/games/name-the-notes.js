@@ -319,7 +319,16 @@ function launchConfetti() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
   const ctx = canvas.getContext('2d');
-  const colors = ['#1D9E75','#5DCAA5','#0171E3','#EF9F27','#E24B4A','#f1efe8','#FAC775'];
+  const styles = getComputedStyle(document.documentElement);
+  const colors = [
+    themeColor('pitch-hit', styles),
+    themeColor('confetti-mint', styles),
+    themeColor('pitch-default', styles),
+    themeColor('amber-border', styles),
+    themeColor('wrong-border', styles),
+    themeColor('confetti-neutral', styles),
+    themeColor('amber-text', styles),
+  ];
   const pieces = Array.from({ length: 100 }, () => ({
     x:    Math.random() * canvas.width,
     y:    Math.random() * -200 - 10,

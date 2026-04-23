@@ -41,11 +41,11 @@ function notationNoteColor(note) {
   const palette = getNotePalette(note);
   const state = note.state || 'idle';
   if (state === 'current') return palette.pitch;
-  if (state === 'done') return darkMode ? '#3B6D11' : '#639922';
+  if (state === 'done') return themeColor('notation-done');
   if (window.boomwhackerMode) {
     return darkMode ? palette.noteFill : palette.noteStroke;
   }
-  return darkMode ? '#e0dfd8' : '#1a1a18';
+  return themeColor('notation-idle');
 }
 
 const NOTATION_PAD_REST = [
@@ -145,7 +145,7 @@ const NOTATION_RESERVED_HEIGHTS = new Map();
 let notationMeasureHost = null;
 
 function notationThemeOptions() {
-  const accent = darkMode ? '#b4b2a9' : '#1a1a18';
+  const accent = themeColor('renderer-accent');
   return {
     defaultColorMusic: accent,
     defaultColorNotehead: accent,

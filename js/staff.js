@@ -153,15 +153,35 @@ function applyKey(base, acc) {
   });
 }
 
-const BOOMWHACKER_PALETTE = {
-  C: { noteFill:'#F15B5B', noteStroke:'#A52B2B', label:'#A52B2B', buttonBg:'#F15B5B', buttonText:'#FFFFFF', pitch:'#D94848' },
-  D: { noteFill:'#F59D3D', noteStroke:'#B45C05', label:'#9A4F00', buttonBg:'#F59D3D', buttonText:'#FFFFFF', pitch:'#D47F1F' },
-  E: { noteFill:'#F8D64E', noteStroke:'#9B7700', label:'#856600', buttonBg:'#F8D64E', buttonText:'#4F3C00', pitch:'#D1AF21' },
-  F: { noteFill:'#62BA63', noteStroke:'#1F7A30', label:'#1F7A30', buttonBg:'#62BA63', buttonText:'#FFFFFF', pitch:'#44A146' },
-  G: { noteFill:'#2FC2E8', noteStroke:'#0C78A6', label:'#0C78A6', buttonBg:'#2FC2E8', buttonText:'#FFFFFF', pitch:'#1AA5CD' },
-  A: { noteFill:'#4F7CFF', noteStroke:'#2149A6', label:'#2149A6', buttonBg:'#4F7CFF', buttonText:'#FFFFFF', pitch:'#3E68E1' },
-  B: { noteFill:'#AE63D7', noteStroke:'#6D338D', label:'#6D338D', buttonBg:'#AE63D7', buttonText:'#FFFFFF', pitch:'#924DC0' },
-};
+function themeStyles() {
+  return getComputedStyle(document.documentElement);
+}
+
+function resolveThemeValue(value, styles, seen = new Set()) {
+  const trimmed = String(value || '').trim();
+  const refMatch = /^var\((--[A-Za-z0-9_-]+)\)$/.exec(trimmed);
+  if (!refMatch) return trimmed;
+  const refName = refMatch[1].slice(2);
+  if (seen.has(refName)) return '';
+  seen.add(refName);
+  return resolveThemeValue(styles.getPropertyValue(refMatch[1]), styles, seen);
+}
+
+function themeColor(token, styles = themeStyles()) {
+  const name = String(token || '').replace(/^--/, '');
+  return resolveThemeValue(styles.getPropertyValue(`--${name}`), styles, new Set([name]));
+}
+
+function notePaletteFromTokens(prefix, styles) {
+  return {
+    noteFill: themeColor(`${prefix}-note-fill`, styles),
+    noteStroke: themeColor(`${prefix}-note-stroke`, styles),
+    label: themeColor(`${prefix}-label`, styles),
+    buttonBg: themeColor(`${prefix}-button-bg`, styles),
+    buttonText: themeColor(`${prefix}-button-text`, styles),
+    pitch: themeColor(`${prefix}-pitch`, styles),
+  };
+}
 
 function getNoteLetter(noteOrName) {
   const name = typeof noteOrName === 'string'
@@ -171,17 +191,21 @@ function getNoteLetter(noteOrName) {
 }
 
 function getNotePalette(noteOrName) {
-  const monoPitch = '#0171E3';
-  const monoNote = darkMode ? '#e0dfd8' : '#1a1a18';
-  const monoLabel = darkMode ? '#8AC6FF' : '#0171E3';
+  const styles = themeStyles();
   const mono = {
-    noteFill: monoNote,
-    noteStroke: monoNote,
-    label: monoLabel,
-    buttonBg: monoPitch,
-    buttonText: '#FFFFFF',
-    pitch: monoPitch,
+    noteFill: themeColor('note-mono-fill', styles),
+    noteStroke: themeColor('note-mono-fill', styles),
+    label: themeColor('note-mono-label', styles),
+    buttonBg: themeColor('note-mono-pitch', styles),
+    buttonText: themeColor('on-primary', styles),
+    pitch: themeColor('note-mono-pitch', styles),
   };
   if (!window.boomwhackerMode) return mono;
-  return BOOMWHACKER_PALETTE[getNoteLetter(noteOrName)] || mono;
+  const letter = getNoteLetter(noteOrName).toLowerCase();
+  if (!letter) return mono;
+  const tokenPrefix = `boom-${letter}`;
+  if (!themeColor(`${tokenPrefix}-note-fill`, styles)) return mono;
+  return notePaletteFromTokens(tokenPrefix, styles);
 }
+
+window.themeColor = themeColor;

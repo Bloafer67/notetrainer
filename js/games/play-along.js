@@ -215,7 +215,7 @@ async function pa_loadAndRender({ preserveCursor = false } = {}) {
   const container = document.getElementById('pa-osmd-container');
   if (!container) return;
 
-  const accent = darkMode ? '#b4b2a9' : '#1a1a18';
+  const accent = themeColor('renderer-accent');
   const themeOptions = {
     defaultColorMusic: accent,
     defaultColorNotehead: accent,
@@ -463,7 +463,7 @@ function pa_updatePitchOverlay(hz, inRange) {
     centerX = cRect.left + cRect.width / 2 - wRect.left;
   }
 
-  const color = inRange ? '#1D9E75' : getNotePalette(pa_currentDisplayNoteName()).pitch;
+  const color = inRange ? themeColor('pitch-hit') : getNotePalette(pa_currentDisplayNoteName()).pitch;
   const half = 40;
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.setAttribute('x1', centerX - half);
