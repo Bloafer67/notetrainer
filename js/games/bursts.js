@@ -5,6 +5,8 @@
 const BURSTS_PER_BURST = 3;
 const BURSTS_HIT_CENTS = 80;
 const BURSTS_HOLD_MS   = 280;
+const BURSTS_REARM_CENTS      = 140;
+const BURSTS_REARM_SILENCE_MS = 120;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let bursts_active   = false;
@@ -12,6 +14,9 @@ let bursts_smoothHz = null;
 let bursts_hitTimer = null;
 let bursts_notes    = [];
 let bursts_index    = 0;
+let bursts_hitArmed = true;
+let bursts_rearmHz  = null;
+let bursts_silentAt = 0;
 
 function burstsGuideColor(hz = bursts_smoothHz) {
   const target = bursts_notes[bursts_index];
@@ -29,6 +34,40 @@ Object.defineProperties(window, {
 });
 
 function initBursts() {}
+
+function burstsClearHitTimer() {
+  if (bursts_hitTimer) {
+    clearTimeout(bursts_hitTimer);
+    bursts_hitTimer = null;
+  }
+}
+
+function burstsMaybeRearm(hz) {
+  if (bursts_hitArmed) return true;
+
+  if (!hz) {
+    if (!bursts_silentAt) bursts_silentAt = performance.now();
+    if (performance.now() - bursts_silentAt >= BURSTS_REARM_SILENCE_MS) {
+      bursts_hitArmed = true;
+      bursts_rearmHz = null;
+    }
+    return bursts_hitArmed;
+  }
+
+  bursts_silentAt = 0;
+  if (!bursts_rearmHz) {
+    bursts_hitArmed = true;
+    return true;
+  }
+
+  const centsFromLastHit = Math.abs(1200 * Math.log2(hz / bursts_rearmHz));
+  if (centsFromLastHit >= BURSTS_REARM_CENTS) {
+    bursts_hitArmed = true;
+    bursts_rearmHz = null;
+  }
+
+  return bursts_hitArmed;
+}
 
 // ── Start ─────────────────────────────────────────────────────────────────
 async function startBursts() {
@@ -50,6 +89,9 @@ async function startBursts() {
 
   bursts_active   = true;
   bursts_smoothHz = null;
+  bursts_hitArmed = true;
+  bursts_rearmHz  = null;
+  bursts_silentAt = 0;
 
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
@@ -79,7 +121,7 @@ async function startBursts() {
 function stopBursts() {
   bursts_active = false;
   stopPitchDetection();
-  if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
+  burstsClearHitTimer();
   removePitchLine();
   showTuner(false);
   const micEl = document.getElementById('mic-status');
@@ -89,7 +131,7 @@ function stopBursts() {
 // ── Generate next burst ──────────────────────────────────────────────────
 async function burstsNextRound() {
   bursts_smoothHz = null;
-  if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
+  burstsClearHitTimer();
 
   const pool = getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
   bursts_notes = [];
@@ -142,8 +184,21 @@ function onBurstsPitchFrame(hz) {
   const target = bursts_notes[bursts_index];
   updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
 
-  if (!hz || !target) {
-    if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
+  if (!hz) {
+    burstsClearHitTimer();
+    burstsMaybeRearm(null);
+    return;
+  }
+
+  bursts_silentAt = 0;
+
+  if (!target) {
+    burstsClearHitTimer();
+    return;
+  }
+
+  if (!burstsMaybeRearm(hz)) {
+    burstsClearHitTimer();
     return;
   }
 
@@ -159,12 +214,17 @@ function onBurstsPitchFrame(hz) {
       }, BURSTS_HOLD_MS);
     }
   } else {
-    if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
+    burstsClearHitTimer();
   }
 }
 
 function onBurstsNoteHit() {
   if (!bursts_active || !gameActive) return;
+  const hitNote = bursts_notes[bursts_index];
+  burstsClearHitTimer();
+  bursts_hitArmed = false;
+  bursts_rearmHz = NOTE_FREQS[hitNote?.actualName] || NOTE_FREQS[hitNote?.name] || null;
+  bursts_silentAt = 0;
   flashPitchLineGreen();
 
   bursts_index++;
