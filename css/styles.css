@@ -198,7 +198,7 @@ select optgroup {
   padding: 6px;
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: var(--shadow-menu);
   max-height: 240px;
   overflow-y: auto;
@@ -228,7 +228,7 @@ select optgroup {
 
 .custom-select--pregame .custom-select__trigger,
 .custom-select--leaderboard .custom-select__trigger {
-  border-radius: 999px;
+  border-radius: 12px;
 }
 
 .custom-select--pregame .custom-select__trigger {
@@ -277,14 +277,14 @@ select optgroup {
   font-size: 13px;
   font-weight: 500;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .custom-select--game-mode .custom-select__option {
   font-size: 16px;
   font-weight: 600;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -461,7 +461,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .pregame-selectors-row { display: flex; gap: 8px; align-items: center; }
 .pregame-select {
   flex: 1; font-family: inherit; font-size: 13px; color: var(--text);
-  background: var(--surface); border: 0.5px solid var(--border2); border-radius: 999px;
+  background: var(--surface); border: 0.5px solid var(--border2); border-radius: 12px;
   padding: 10px 28px 10px 16px; cursor: pointer; appearance: none; font-weight: 500;
   min-height: 36px;
   background-image: var(--select-chevron);
@@ -478,7 +478,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
   display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
   transform: translateX(-50%); width: 220px;
   background: var(--surface); border: 0.5px solid var(--border);
-  border-radius: 8px; padding: 8px 10px; font-size: 11px;
+  border-radius: 12px; padding: 8px 10px; font-size: 11px;
   color: var(--text2); line-height: 1.5; z-index: 50;
   pointer-events: none; text-align: left;
 }
@@ -503,7 +503,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .choice-btn {
   background: var(--choice-btn-bg, var(--primary));
-  border: 1px solid var(--choice-btn-border, transparent); border-radius: 10px;
+  border: 1px solid var(--choice-btn-border, transparent); border-radius: 12px;
   padding: 14px 4px; font-size: 15px; font-weight: 600;
   cursor: pointer; font-family: inherit; color: var(--choice-btn-text, var(--on-primary));
   transition: filter 0.1s, transform 0.08s;
@@ -529,7 +529,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%) scale(0.8);
   background: var(--correct-bg); border: 0.5px solid var(--correct-border);
-  color: var(--correct-text); border-radius: 10px;
+  color: var(--correct-text); border-radius: 12px;
   padding: 8px 20px; font-size: 18px; font-weight: 500;
   opacity: 0; pointer-events: none; z-index: 20;
   transition: opacity 0.12s, transform 0.12s;
@@ -541,7 +541,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .hs-toast {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
   background: var(--amber-bg); border: 0.5px solid var(--amber-border);
-  border-radius: 8px; padding: 5px 14px; font-size: 12px;
+  border-radius: 12px; padding: 5px 14px; font-size: 12px;
   color: var(--amber-text); white-space: nowrap;
   opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 40;
 }
@@ -560,14 +560,14 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .recap-new-best-badge { font-size: 13px; color: var(--amber-text); font-weight: 500; margin-top: 6px; }
 .recap-form { display: flex; gap: 8px; width: 100%; margin-top: 28px; }
 .recap-name-input {
-  flex: 1; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+  flex: 1; padding: 10px 14px; border-radius: 12px; font-size: 14px;
   border: 0.5px solid var(--border2); background: var(--surface2);
   color: var(--text); font-family: inherit; outline: none;
 }
 .recap-name-input::placeholder { color: var(--text3); }
 .recap-name-input:focus { border-color: var(--primary); }
 .recap-save-btn {
-  padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 500;
+  padding: 10px 18px; border-radius: 12px; font-size: 14px; font-weight: 500;
   font-family: inherit; cursor: pointer; white-space: nowrap;
   background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border2);
 }
@@ -594,7 +594,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .lb-board-select {
   flex: 1; font-family: inherit; font-size: 13px; font-weight: 500;
   color: var(--text); background: var(--surface);
-  border: 0.5px solid var(--border2); border-radius: 999px;
+  border: 0.5px solid var(--border2); border-radius: 12px;
   padding: 6px 28px 6px 14px; cursor: pointer; appearance: none;
   min-height: 31px;
   background-image: var(--select-chevron);
@@ -611,7 +611,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
   display: grid; grid-template-columns: 28px 1fr auto;
   align-items: center; gap: 10px;
   background: var(--surface); border: 0.5px solid var(--border);
-  border-radius: 10px; padding: 10px 14px;
+  border-radius: 12px; padding: 10px 14px;
 }
 .lb-row-highlight {
   background: var(--primary-light) !important;
@@ -659,7 +659,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 .note-names-toggle {
   position: absolute; bottom: 8px; left: 10px;
   font-size: 10px; font-weight: 600; font-family: inherit;
-  padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  padding: 2px 8px; border-radius: 12px; cursor: pointer;
   border: 0.5px solid var(--border2);
   background: var(--surface2); color: var(--text3);
   transition: background 0.15s, color 0.15s;
@@ -672,7 +672,7 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
 
 /* ── Pitch line (Play the Notes) ──────────────────────────────────────── */
 #pitch-line { transition: y1 0.04s linear, y2 0.04s linear; }
-details { width: 100%; border-radius: 8px; overflow: hidden; border: 0.5px solid var(--border); background: var(--bg); margin-top: 8px; }
+details { width: 100%; border-radius: 12px; overflow: hidden; border: 0.5px solid var(--border); background: var(--bg); margin-top: 8px; }
 summary {
   padding: 12px 16px; font-size: 12px; color: var(--text3); cursor: pointer;
   list-style: none; display: flex; justify-content: space-between;
@@ -704,7 +704,7 @@ details[open] summary::after { content: '▾'; }
   gap: 12px; margin-top: 8px;
 }
 .lb-page-btn {
-  font-size: 13px; padding: 5px 12px; border-radius: 999px;
+  font-size: 13px; padding: 5px 12px; border-radius: 12px;
   border: 0.5px solid var(--border2); background: transparent;
   color: var(--text2); cursor: pointer; font-family: inherit;
 }
@@ -716,7 +716,7 @@ details[open] summary::after { content: '▾'; }
 .ptn-tuner-wrap {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; background: var(--surface);
-  border: 0.5px solid var(--border); border-radius: 10px;
+  border: 0.5px solid var(--border); border-radius: 12px;
 }
 .ptn-tuner-bar {
   flex: 1; height: 8px; background: var(--surface2);
@@ -744,7 +744,7 @@ details[open] summary::after { content: '▾'; }
   display: flex; gap: 8px;
 }
 .game-exit-btn, .game-restart-btn {
-  flex: 1; padding: 8px; border-radius: 8px; font-size: 12px;
+  flex: 1; padding: 8px; border-radius: 12px; font-size: 12px;
   font-family: inherit; cursor: pointer; font-weight: 500;
   border: 0.5px solid var(--border2); background: transparent;
   color: var(--text3); transition: background 0.15s, color 0.15s;
@@ -826,7 +826,7 @@ details[open] summary::after { content: '▾'; }
 }
 .pa-complete-metric {
   flex: 1; background: var(--surface2); border: 0.5px solid var(--border);
-  border-radius: 10px; padding: 12px 10px;
+  border-radius: 12px; padding: 12px 10px;
   display: flex; flex-direction: column; gap: 4px;
 }
 .pa-complete-metric-num {
