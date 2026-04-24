@@ -83,9 +83,18 @@
         <!-- Selectors (hidden for Play Along) -->
         <div id="pregame-selectors-wrap" class="pregame-selectors">
           <div class="pregame-selectors-row">
+            <select class="pregame-select" id="practice-mode-select" onchange="onPracticeModeChange()">
+              <option value="note-names">Note Names</option>
+              <option value="key-signatures">Key Signatures</option>
+            </select>
+            <div class="info-nub">i
+              <div class="info-tooltip">Note Names focuses on staff position only. Key Signatures makes you apply the selected signature while you read.</div>
+            </div>
+          </div>
+          <div class="pregame-selectors-row" id="key-select-row">
             <select class="pregame-select" id="key-select" onchange="onKeyChange()"></select>
             <div class="info-nub">i
-              <div class="info-tooltip">The key signature appears on the staff. Note buttons show natural names — apply the key yourself.</div>
+              <div class="info-tooltip">Choose the key signature you want to read. The list is ordered by accidental difficulty and shows the shared major/minor pair.</div>
             </div>
           </div>
           <div class="pregame-selectors-row">

@@ -12,10 +12,6 @@
 // maps each to a color via getNotePalette() / darkMode, so boomwhacker mode
 // and burst progress rendering both work without extra plumbing.
 
-// KEY_SIGS order (staff.js):
-//   0: C  1: G  2: D  3: A  4: E  5: F  6: Bb  7: Eb  8: Ab
-const NOTATION_KEY_FIFTHS = [0, 1, 2, 3, 4, -1, -2, -3, -4];
-
 function notationParseNoteName(name) {
   const m = /^([A-G])(#{1,2}|b{1,2})?(-?\d+)$/.exec(String(name || ''));
   if (!m) return null;
@@ -59,8 +55,8 @@ const NOTATION_PAD_REST = [
 
 function notationBuildMusicXml(notes, opts = {}) {
   const clef = opts.clef || 'treble';
-  const keySigIndex = opts.keySigIndex ?? 0;
-  const fifths = NOTATION_KEY_FIFTHS[keySigIndex] ?? 0;
+  const keySig = getKeySignature(opts.keySigIndex ?? 0);
+  const fifths = keySig.fifths ?? 0;
   const clefXml = notationClefXml(clef);
   const padBeats = Math.max(0, Math.round(Number.isFinite(opts.padBeats) ? opts.padBeats : 2));
 

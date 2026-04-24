@@ -6,16 +6,65 @@
 // This matches standard guitar notation (treble clef with "8" underneath).
 
 const KEY_SIGS = [
-  { label:'C major', short:'C',  acc:{} },
-  { label:'G major', short:'G',  acc:{F:'#'} },
-  { label:'D major', short:'D',  acc:{F:'#',C:'#'} },
-  { label:'A major', short:'A',  acc:{F:'#',C:'#',G:'#'} },
-  { label:'E major', short:'E',  acc:{F:'#',C:'#',G:'#',D:'#'} },
-  { label:'F major', short:'F',  acc:{B:'b'} },
-  { label:'Bb major',short:'Bb', acc:{B:'b',E:'b'} },
-  { label:'Eb major',short:'Eb', acc:{B:'b',E:'b',A:'b'} },
-  { label:'Ab major',short:'Ab', acc:{B:'b',E:'b',A:'b',D:'b'} },
+  { id:'sig-0',  label:'C / Am (no accidentals)', legacyLabels:['C major', 'No accidentals (C / Am)'], short:'C',  fifths:0,  acc:{} },
+  { id:'sig-1s', label:'G / Em (1 sharp)',        legacyLabels:['G major', '1 sharp (G / Em)'],        short:'G',  fifths:1,  acc:{F:'#'} },
+  { id:'sig-1f', label:'F / Dm (1 flat)',         legacyLabels:['F major', '1 flat (F / Dm)'],         short:'F',  fifths:-1, acc:{B:'b'} },
+  { id:'sig-2s', label:'D / Bm (2 sharps)',       legacyLabels:['D major', '2 sharps (D / Bm)'],       short:'D',  fifths:2,  acc:{F:'#',C:'#'} },
+  { id:'sig-2f', label:'Bb / Gm (2 flats)',       legacyLabels:['Bb major', '2 flats (Bb / Gm)'],      short:'Bb', fifths:-2, acc:{B:'b',E:'b'} },
+  { id:'sig-3s', label:'A / F#m (3 sharps)',      legacyLabels:['A major', '3 sharps (A / F#m)'],      short:'A',  fifths:3,  acc:{F:'#',C:'#',G:'#'} },
+  { id:'sig-3f', label:'Eb / Cm (3 flats)',       legacyLabels:['Eb major', '3 flats (Eb / Cm)'],      short:'Eb', fifths:-3, acc:{B:'b',E:'b',A:'b'} },
+  { id:'sig-4s', label:'E / C#m (4 sharps)',      legacyLabels:['E major', '4 sharps (E / C#m)'],      short:'E',  fifths:4,  acc:{F:'#',C:'#',G:'#',D:'#'} },
+  { id:'sig-4f', label:'Ab / Fm (4 flats)',       legacyLabels:['Ab major', '4 flats (Ab / Fm)'],      short:'Ab', fifths:-4, acc:{B:'b',E:'b',A:'b',D:'b'} },
 ];
+
+const DRILL_BOARD_IDS = {
+  noteNames: 'note-names',
+};
+
+const KEY_SIGS_BY_ID = Object.fromEntries(KEY_SIGS.map(sig => [sig.id, sig]));
+const KEY_SIG_LOOKUP = new Map();
+KEY_SIGS.forEach(sig => {
+  [sig.id, sig.label, sig.short, ...(sig.legacyLabels || [])].forEach(value => {
+    KEY_SIG_LOOKUP.set(value, sig);
+  });
+});
+
+function getKeySignature(keySigIndex = 0) {
+  return KEY_SIGS[keySigIndex] || KEY_SIGS[0];
+}
+
+function getKeySignatureById(id) {
+  return KEY_SIGS_BY_ID[String(id || '').trim()] || KEY_SIGS[0];
+}
+
+function normalizeKeySignatureId(value) {
+  return (KEY_SIG_LOOKUP.get(String(value || '').trim()) || KEY_SIGS[0]).id;
+}
+
+function getKeySignatureLabel(keySigIndex = 0) {
+  return getKeySignature(keySigIndex).label;
+}
+
+function normalizeDrillBoardId(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return KEY_SIGS[0].id;
+  if (trimmed === DRILL_BOARD_IDS.noteNames || trimmed === 'Note Names') {
+    return DRILL_BOARD_IDS.noteNames;
+  }
+  return normalizeKeySignatureId(trimmed);
+}
+
+function getDrillBoardLabel(boardId) {
+  const normalized = normalizeDrillBoardId(boardId);
+  if (normalized === DRILL_BOARD_IDS.noteNames) return 'Note Names';
+  return getKeySignatureById(normalized).label;
+}
+
+function getDrillBoardSummary(boardId) {
+  const normalized = normalizeDrillBoardId(boardId);
+  if (normalized === DRILL_BOARD_IDS.noteNames) return 'Note Names';
+  return `Key Signatures · ${getKeySignatureById(normalized).label}`;
+}
 
 // ── Drill note sets ───────────────────────────────────────────────────────
 // Step 0 = bottom line for the active clef. Staff-only keeps notes on the
@@ -127,7 +176,7 @@ function getDrillBaseNotes(clefName, rangeMode = 'staff-only') {
 }
 
 function getDrillNotes(clefName, keySigIndex, rangeMode = 'staff-only') {
-  const keySig = KEY_SIGS[keySigIndex] || KEY_SIGS[0];
+  const keySig = getKeySignature(keySigIndex);
   return applyKey(getDrillBaseNotes(clefName, rangeMode), keySig.acc);
 }
 
@@ -209,3 +258,11 @@ function getNotePalette(noteOrName) {
 }
 
 window.themeColor = themeColor;
+window.getKeySignature = getKeySignature;
+window.getKeySignatureById = getKeySignatureById;
+window.normalizeKeySignatureId = normalizeKeySignatureId;
+window.getKeySignatureLabel = getKeySignatureLabel;
+window.DRILL_BOARD_IDS = DRILL_BOARD_IDS;
+window.normalizeDrillBoardId = normalizeDrillBoardId;
+window.getDrillBoardLabel = getDrillBoardLabel;
+window.getDrillBoardSummary = getDrillBoardSummary;

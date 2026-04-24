@@ -13,6 +13,14 @@
 let clef         = 'treble';
 let keyIndex     = 0;
 let gameDuration = 60;  // set from duration-select on init
+const DRILL_PRACTICE_STORAGE_KEY = 'mntr-drill-practice';
+const DRILL_PRACTICE_MODES = {
+  'note-names':     { label: 'Note Names' },
+  'key-signatures': { label: 'Key Signatures' },
+};
+let drillPracticeMode = localStorage.getItem(DRILL_PRACTICE_STORAGE_KEY) === 'key-signatures'
+  ? 'key-signatures'
+  : 'note-names';
 let score        = 0;
 let streak       = 0;
 let current      = null;  // the current note object { name, step, actualName }
@@ -29,7 +37,45 @@ Object.defineProperties(window, {
   paused:        { get: () => paused,        set: v => { paused = v; } },
   timerInterval: { get: () => timerInterval, set: v => { timerInterval = v; } },
   current:       { get: () => current },
+  currentDrillPracticeMode: { get: () => drillPracticeMode },
+  activeDrillKeyIndex: { get: () => getActiveDrillKeyIndex() },
 });
+
+function getDrillPracticeModeLabel(mode = drillPracticeMode) {
+  return DRILL_PRACTICE_MODES[mode]?.label || DRILL_PRACTICE_MODES['note-names'].label;
+}
+
+function getActiveDrillKeyIndex() {
+  return drillPracticeMode === 'key-signatures' ? keyIndex : 0;
+}
+
+function currentDrillBoardId() {
+  if (drillPracticeMode !== 'key-signatures') return DRILL_BOARD_IDS.noteNames;
+  return getKeySignature(getActiveDrillKeyIndex()).id;
+}
+
+function currentDrillBoardLabel() {
+  return getDrillBoardLabel(currentDrillBoardId());
+}
+
+function currentDrillBoardSummary() {
+  return getDrillBoardSummary(currentDrillBoardId());
+}
+
+function syncPracticeModeSelect() {
+  const select = document.getElementById('practice-mode-select');
+  if (!select) return;
+  select.value = drillPracticeMode;
+  window.refreshCustomSelect?.(select);
+}
+
+function syncDrillPracticeControls() {
+  syncPracticeModeSelect();
+  const keyRow = document.getElementById('key-select-row');
+  if (!keyRow) return;
+  const isPlayAlong = window.gameMode === 'play-along';
+  keyRow.style.display = (!isPlayAlong && drillPracticeMode === 'key-signatures') ? '' : 'none';
+}
 
 // ── Setup controls ────────────────────────────────────────────────────────
 function initNameTheNotes() {
@@ -41,6 +87,7 @@ function initNameTheNotes() {
     ks.appendChild(o);
   });
   gameDuration = parseInt(document.getElementById('duration-select').value);
+  syncPracticeModeSelect();
 }
 
 function bestKey() {
@@ -49,7 +96,7 @@ function bestKey() {
   const prefix = window.gameMode === 'bursts'
     ? 'mntr3-bursts-best-'
     : 'mntr3-best-';
-  return prefix + KEY_SIGS[keyIndex].short + '-' + clef + '-' + window.noteRangeMode;
+  return prefix + currentDrillBoardId() + '-' + clef + '-' + window.noteRangeMode;
 }
 
 function loadBest() {
@@ -60,7 +107,17 @@ function loadBest() {
 }
 
 function onKeyChange() {
-  keyIndex = parseInt(document.getElementById('key-select').value);
+  keyIndex = parseInt(document.getElementById('key-select').value, 10);
+  loadBest();
+  if (gameActive && !paused) nextQuestion();
+}
+
+function onPracticeModeChange() {
+  const select = document.getElementById('practice-mode-select');
+  if (!select) return;
+  drillPracticeMode = select.value === 'key-signatures' ? 'key-signatures' : 'note-names';
+  localStorage.setItem(DRILL_PRACTICE_STORAGE_KEY, drillPracticeMode);
+  syncDrillPracticeControls();
   loadBest();
   if (gameActive && !paused) nextQuestion();
 }
@@ -177,7 +234,7 @@ function endGame() {
     game: window.gameMode || 'name-the-notes',
     score: lastScore,
     clef: clefLabel,
-    key: KEY_SIGS[keyIndex].label,
+    key: currentDrillBoardLabel(),
     duration: gameDuration,
   };
 
@@ -220,7 +277,7 @@ function endGame() {
 
 // ── Note question logic ───────────────────────────────────────────────────
 function noteSet() {
-  return getDrillNotes(clef, keyIndex, window.noteRangeMode);
+  return getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
 }
 
 async function ntnRenderCurrent() {
@@ -228,7 +285,7 @@ async function ntnRenderCurrent() {
   const container = document.getElementById('staff-osmd');
   await reserveStaffHeight(container, {
     clef,
-    keySigIndex: keyIndex,
+    keySigIndex: getActiveDrillKeyIndex(),
     rangeMode: window.noteRangeMode,
     showLabels: false,
   });
@@ -236,7 +293,7 @@ async function ntnRenderCurrent() {
     name: current.name,
     actualName: current.actualName,
   }], {
-    clef, keySigIndex: keyIndex,
+    clef, keySigIndex: getActiveDrillKeyIndex(),
   });
 }
 
@@ -258,20 +315,41 @@ function refreshChoiceButtonColors() {
   });
 }
 
+function parseNoteName(name) {
+  const match = /^([A-G])(#{1,2}|b{1,2})?(-?\d+)?$/.exec(String(name || ''));
+  if (!match) return null;
+  return {
+    letter: match[1],
+    accidental: match[2] || '',
+    octave: match[3] || '',
+  };
+}
+
+function answerLabelForNote(note) {
+  const parsed = parseNoteName(note?.actualName || note?.name || '');
+  const letter = parsed?.letter || getNoteLetter(note);
+  if (drillPracticeMode !== 'key-signatures') return letter;
+  const keyAccidental = getKeySignature(getActiveDrillKeyIndex()).acc[letter] || '';
+  const noteAccidental = parsed?.accidental || '';
+  if (!noteAccidental && keyAccidental) return `${letter} natural`;
+  return letter + noteAccidental;
+}
+
 function buildChoices(correct, notes) {
-  const pool = notes
-    .filter(n => n.name !== correct.name)
+  const correctLabel = answerLabelForNote(correct);
+  const pool = [...new Set(notes.map(answerLabelForNote))]
+    .filter(label => label !== correctLabel)
     .sort(() => Math.random() - 0.5)
     .slice(0, 3);
-  const opts = [...pool, correct].sort(() => Math.random() - 0.5);
+  const opts = [...pool, correctLabel].sort(() => Math.random() - 0.5);
   const c = document.getElementById('choices');
   c.innerHTML = '';
-  opts.forEach(note => {
+  opts.forEach(label => {
     const btn = document.createElement('button');
     btn.className = 'choice-btn';
-    btn.textContent = note.name;
-    btn.dataset.name = note.name;
-    btn.onclick = () => checkAnswer(note.name, btn);
+    btn.textContent = label;
+    btn.dataset.answer = label;
+    btn.onclick = () => checkAnswer(label, btn);
     c.appendChild(btn);
   });
   refreshChoiceButtonColors();
@@ -282,8 +360,9 @@ function checkAnswer(chosen, btn) {
   answered = true;
   document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
   const fb = document.getElementById('feedback');
+  const correctLabel = answerLabelForNote(current);
 
-  if (chosen === current.name) {
+  if (chosen === correctLabel) {
     btn.classList.add('correct');
     score++;
     streak++;
@@ -302,9 +381,9 @@ function checkAnswer(chosen, btn) {
     btn.classList.add('wrong');
     streak = 0;
     document.getElementById('streak').textContent = '0';
-    fb.textContent = 'Not quite — it was ' + current.name + '.';
+    fb.textContent = 'Not quite — it was ' + correctLabel + '.';
     fb.style.color = 'var(--wrong-text)';
-    showAnswerToast(current.name, false);
+    showAnswerToast(correctLabel, false);
   }
 
   setTimeout(() => { if (gameActive && !paused) nextQuestion(); }, 600);
@@ -390,10 +469,16 @@ function shareScore() {
   };
   const title = titleMap[mode] || titleMap['name-the-notes'];
   const unit  = unitMap[mode]  || 'notes';
-  const text = `${title}\n⭐ ${lastScore} ${unit} in ${gameDuration}s\n${KEY_SIGS[keyIndex].label} · ${clefLabel} · ${getDrillRangeLabel(window.noteRangeMode)}\nhttps://notetrainer-eight.vercel.app`;
+  const text = `${title}\n⭐ ${lastScore} ${unit} in ${gameDuration}s\n${currentDrillBoardSummary()} · ${clefLabel} · ${getDrillRangeLabel(window.noteRangeMode)}\nhttps://notetrainer-eight.vercel.app`;
   if (navigator.share) {
     navigator.share({ text }).catch(() => {});
   } else {
     navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
   }
 }
+
+window.getActiveDrillKeyIndex = getActiveDrillKeyIndex;
+window.getCurrentDrillBoardId = currentDrillBoardId;
+window.getCurrentDrillBoardSummary = currentDrillBoardSummary;
+window.getDrillPracticeModeLabel = getDrillPracticeModeLabel;
+window.syncDrillPracticeControls = syncDrillPracticeControls;
