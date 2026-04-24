@@ -46,21 +46,21 @@ function boardKey(e) {
   const game = e.game || 'name-the-notes';
   if (game === 'play-along') return ['play-along', 'song', e.song || e.key || 'unknown-song'].join('|');
   const dur = e.duration ?? e.Duration ?? 60;
-  return ['timed', game, e.clef || 'Treble', e.key || 'C major', dur].join('|');
+  return ['timed', game, e.clef || 'Treble', normalizeDrillBoardId(e.key), dur].join('|');
 }
 
 function currentBoardKey() {
   const mode = window.gameMode || 'name-the-notes';
   if (mode === 'play-along') return ['play-along', 'song', getPlayAlongSongKey()].join('|');
   const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
-  return ['timed', mode, boardClefLabel(mode, clefLabel), KEY_SIGS[keyIndex].label, gameDuration].join('|');
+  return ['timed', mode, boardClefLabel(mode, clefLabel), getCurrentDrillBoardId(), gameDuration].join('|');
 }
 
 function boardLabel(key) {
   const parts = key.split('|');
   if (parts[0] === 'play-along') return `${songLabel(parts[2])} · Play Along`;
-  const [, , clefLabel, keyLabel, duration] = parts;
-  return `${keyLabel} · ${clefLabel} · ${duration}s`;
+  const [, , clefLabel, boardId, duration] = parts;
+  return `${getDrillBoardSummary(boardId)} · ${clefLabel} · ${duration}s`;
 }
 
 function normalizeAccuracy(value) {

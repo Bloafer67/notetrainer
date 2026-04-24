@@ -89,7 +89,7 @@ async function ptnNextQuestion() {
   ptn_smoothHz  = null;
   ptn_centsHist = [];
   document.getElementById('feedback').textContent = '';
-  const notes = getDrillNotes(clef, keyIndex, window.noteRangeMode);
+  const notes = getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
   current = notes[Math.floor(Math.random() * notes.length)];
   await ptnRenderCurrent();
   removePitchLine();
@@ -100,7 +100,7 @@ async function ptnRenderCurrent() {
   const container = document.getElementById('staff-osmd');
   await reserveStaffHeight(container, {
     clef,
-    keySigIndex: keyIndex,
+    keySigIndex: getActiveDrillKeyIndex(),
     rangeMode: window.noteRangeMode,
     showLabels: showNoteNames,
   });
@@ -108,7 +108,7 @@ async function ptnRenderCurrent() {
     name: current.name,
     actualName: current.actualName,
   }], {
-    clef, keySigIndex: keyIndex, showLabels: showNoteNames,
+    clef, keySigIndex: getActiveDrillKeyIndex(), showLabels: showNoteNames,
   });
   const overlay = document.getElementById('staff-overlay');
   ptn_bounds = notationStaffBounds(container, overlay);
@@ -288,7 +288,7 @@ function updateTuner(cents, active) {
 function hzToStaffY(hz) {
   if (!hz || !ptn_bounds) return null;
 
-  const notes = getDrillNotes(clef, keyIndex, window.noteRangeMode);
+  const notes = getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
   const loNote = notes[0];
   const hiNote = notes[notes.length - 1];
 

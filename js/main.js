@@ -206,6 +206,7 @@ function onGameModeChange() {
   const paSelectors  = document.getElementById('pa-pregame-selectors');
   if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
+  window.syncDrillPracticeControls?.();
 
   // Swap pregame description
   Object.values(GAME_MODE_CONFIG).forEach(c => {
@@ -327,6 +328,7 @@ function showPregame() {
   const paSelectors  = document.getElementById('pa-pregame-selectors');
   if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
+  window.syncDrillPracticeControls?.();
   updateNoteNamesBtn();
   syncRangeModeSelect();
   loadBest();
@@ -341,6 +343,7 @@ function initApp() {
   setSettingsGearIcon();
   updateNoteNamesBtn();
   syncRangeModeSelect();
+  window.syncDrillPracticeControls?.();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
 
   // URL-based routing — /play-the-notes loads that game mode

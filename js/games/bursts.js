@@ -91,7 +91,7 @@ async function burstsNextRound() {
   bursts_smoothHz = null;
   if (bursts_hitTimer) { clearTimeout(bursts_hitTimer); bursts_hitTimer = null; }
 
-  const pool = getDrillNotes(clef, keyIndex, window.noteRangeMode);
+  const pool = getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
   bursts_notes = [];
   for (let i = 0; i < BURSTS_PER_BURST; i++) {
     bursts_notes.push(pool[Math.floor(Math.random() * pool.length)]);
@@ -108,7 +108,7 @@ async function burstsRenderCurrent() {
   if (!container || !bursts_notes.length) return;
   await reserveStaffHeight(container, {
     clef,
-    keySigIndex: keyIndex,
+    keySigIndex: getActiveDrillKeyIndex(),
     rangeMode: window.noteRangeMode,
     showLabels: false,
     padBeats: 1,
@@ -120,7 +120,7 @@ async function burstsRenderCurrent() {
   }));
   await renderNotes(container, notes, {
     clef,
-    keySigIndex: keyIndex,
+    keySigIndex: getActiveDrillKeyIndex(),
     padBeats: 1,
   });
   const overlay = document.getElementById('staff-overlay');
