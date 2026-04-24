@@ -3,8 +3,10 @@
 // Features: full guitar range, arrows for out-of-range pitch,
 //           tuner inset, ding on hit, note name label, exit/restart
 
-const HIT_THRESHOLD_CENTS = 80;  // more forgiving — was 50
-const HIT_HOLD_MS         = 280;
+const HIT_THRESHOLD_CENTS   = 80;  // more forgiving — was 50
+const HIT_HOLD_MS           = 280;
+const HIT_REARM_CENTS       = 140;
+const HIT_REARM_SILENCE_MS  = 120;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let ptn_active    = false;
@@ -12,6 +14,9 @@ let ptn_hitTimer  = null;
 let ptn_smoothHz  = null;
 let ptn_centsHist = []; // rolling window of cents for tuner display
 let ptn_bounds    = null; // cached staff bounds after each render
+let ptn_hitArmed  = true;
+let ptn_rearmHz   = null;
+let ptn_silentAt  = 0;
 
 function ptnGuideColor(hz = ptn_smoothHz) {
   if (!current) return getNotePalette(null).pitch;
@@ -23,6 +28,40 @@ function ptnGuideColor(hz = ptn_smoothHz) {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 function initPlayTheNotes() {}
+
+function ptnClearHitTimer() {
+  if (ptn_hitTimer) {
+    clearTimeout(ptn_hitTimer);
+    ptn_hitTimer = null;
+  }
+}
+
+function ptnMaybeRearm(hz) {
+  if (ptn_hitArmed) return true;
+
+  if (!hz) {
+    if (!ptn_silentAt) ptn_silentAt = performance.now();
+    if (performance.now() - ptn_silentAt >= HIT_REARM_SILENCE_MS) {
+      ptn_hitArmed = true;
+      ptn_rearmHz = null;
+    }
+    return ptn_hitArmed;
+  }
+
+  ptn_silentAt = 0;
+  if (!ptn_rearmHz) {
+    ptn_hitArmed = true;
+    return true;
+  }
+
+  const centsFromLastHit = Math.abs(1200 * Math.log2(hz / ptn_rearmHz));
+  if (centsFromLastHit >= HIT_REARM_CENTS) {
+    ptn_hitArmed = true;
+    ptn_rearmHz = null;
+  }
+
+  return ptn_hitArmed;
+}
 
 // ── Start ─────────────────────────────────────────────────────────────────
 async function startPlayTheNotes() {
@@ -46,6 +85,9 @@ async function startPlayTheNotes() {
   ptn_active    = true;
   ptn_smoothHz  = null;
   ptn_centsHist = [];
+  ptn_hitArmed  = true;
+  ptn_rearmHz   = null;
+  ptn_silentAt  = 0;
 
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
@@ -76,7 +118,7 @@ async function startPlayTheNotes() {
 function stopPlayTheNotes() {
   ptn_active = false;
   stopPitchDetection();
-  if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
+  ptnClearHitTimer();
   removePitchLine();
   showTuner(false);
   const micEl = document.getElementById('mic-status');
@@ -88,6 +130,7 @@ async function ptnNextQuestion() {
   answered = false;
   ptn_smoothHz  = null;
   ptn_centsHist = [];
+  ptnClearHitTimer();
   document.getElementById('feedback').textContent = '';
   const notes = getDrillNotes(clef, getActiveDrillKeyIndex(), window.noteRangeMode);
   current = notes[Math.floor(Math.random() * notes.length)];
@@ -130,8 +173,21 @@ function onPitchFrame(hz) {
   // Update pitch line (with arrow if out of range) — color by proximity
   updatePitchLineOrArrow(ptn_smoothHz, ptnGuideColor(ptn_smoothHz));
 
-  if (!hz || !current) {
-    if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
+  if (!hz) {
+    ptnClearHitTimer();
+    ptnMaybeRearm(null);
+    return;
+  }
+
+  ptn_silentAt = 0;
+
+  if (!current) {
+    ptnClearHitTimer();
+    return;
+  }
+
+  if (!ptnMaybeRearm(hz)) {
+    ptnClearHitTimer();
     return;
   }
 
@@ -148,13 +204,18 @@ function onPitchFrame(hz) {
       }, HIT_HOLD_MS);
     }
   } else {
-    if (ptn_hitTimer) { clearTimeout(ptn_hitTimer); ptn_hitTimer = null; }
+    ptnClearHitTimer();
   }
 }
 
 // ── Note hit ──────────────────────────────────────────────────────────────
 function onNoteHit() {
   if (!ptn_active || !gameActive) return;
+  const hitHz = NOTE_FREQS[current?.actualName] || NOTE_FREQS[current?.name] || null;
+  ptnClearHitTimer();
+  ptn_hitArmed = false;
+  ptn_rearmHz = hitHz;
+  ptn_silentAt = 0;
   score++;
   streak++;
   document.getElementById('score').textContent  = score;
