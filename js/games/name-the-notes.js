@@ -170,6 +170,10 @@ function startGame() {
     startBursts();
     return;
   }
+  if (window.gameMode === 'intervals') {
+    startIntervals();
+    return;
+  }
   startNameTheNotes();
 }
 

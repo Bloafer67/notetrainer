@@ -180,10 +180,11 @@ function switchTab(name) {
 let gameMode = 'name-the-notes';
 
 const GAME_MODE_CONFIG = {
-  'name-the-notes': { emoji: '🎼', pregameId: 'pregame-ntn'    },
-  'play-the-notes': { emoji: '🎸', pregameId: 'pregame-ptn'    },
-  'play-along':     { emoji: '🎵', pregameId: 'pregame-pa'     },
-  'bursts':         { emoji: '💥', pregameId: 'pregame-bursts' },
+  'name-the-notes': { emoji: '🎼', pregameId: 'pregame-ntn'       },
+  'play-the-notes': { emoji: '🎸', pregameId: 'pregame-ptn'       },
+  'play-along':     { emoji: '🎵', pregameId: 'pregame-pa'        },
+  'bursts':         { emoji: '💥', pregameId: 'pregame-bursts'    },
+  'intervals':      { emoji: '🎧', pregameId: 'pregame-intervals' },
 };
 
 function onGameModeChange() {
@@ -204,8 +205,10 @@ function onGameModeChange() {
   // Show/hide the standard key/clef/duration selectors
   const stdSelectors = document.getElementById('pregame-selectors-wrap');
   const paSelectors  = document.getElementById('pa-pregame-selectors');
-  if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
+  const ivSelectors  = document.getElementById('iv-pregame-selectors');
+  if (stdSelectors) stdSelectors.style.display = (gameMode === 'play-along' || gameMode === 'intervals') ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
+  if (ivSelectors)  ivSelectors.style.display  = gameMode === 'intervals'  ? 'flex' : 'none';
   window.syncDrillPracticeControls?.();
 
   // Swap pregame description
@@ -220,6 +223,7 @@ function onGameModeChange() {
     'play-the-notes': '/play-the-notes',
     'play-along':     '/play-along',
     'bursts':         '/bursts',
+    'intervals':      '/intervals',
   };
   switchTab('game');
   showPregame();
@@ -315,6 +319,8 @@ function showPregame() {
   document.getElementById('active-game').style.display = 'none';
   const paActive = document.getElementById('pa-active');
   if (paActive) paActive.style.display = 'none';
+  const ivActive = document.getElementById('iv-active');
+  if (ivActive) ivActive.style.display = 'none';
   document.getElementById('game-ui').style.display = '';
   document.getElementById('pregame-screen').classList.add('show');
   // Show correct pregame description
@@ -323,11 +329,13 @@ function showPregame() {
     document.getElementById(c.pregameId).style.display = 'none';
   });
   document.getElementById(cfg.pregameId).style.display = '';
-  // Show/hide standard vs PA selectors
+  // Show/hide standard vs PA / Intervals selectors
   const stdSelectors = document.getElementById('pregame-selectors-wrap');
   const paSelectors  = document.getElementById('pa-pregame-selectors');
-  if (stdSelectors) stdSelectors.style.display = gameMode === 'play-along' ? 'none' : '';
+  const ivSelectors  = document.getElementById('iv-pregame-selectors');
+  if (stdSelectors) stdSelectors.style.display = (gameMode === 'play-along' || gameMode === 'intervals') ? 'none' : '';
   if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
+  if (ivSelectors)  ivSelectors.style.display  = gameMode === 'intervals'  ? 'flex' : 'none';
   window.syncDrillPracticeControls?.();
   updateNoteNamesBtn();
   syncRangeModeSelect();
@@ -364,6 +372,11 @@ function initApp() {
     document.getElementById('clef-select').value = 'guitar';
     window.refreshCustomSelect?.(document.getElementById('clef-select'));
     clef = 'guitar';
+  } else if (path === '/intervals') {
+    gameMode = 'intervals';
+    document.getElementById('game-mode-select').value = 'intervals';
+    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
+    document.getElementById('game-mode-emoji').textContent = '🎧';
   }
 
   // Handle browser back/forward

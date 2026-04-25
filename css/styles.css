@@ -898,3 +898,164 @@ details[open] summary::after { content: '▾'; }
     flex-direction: column;
   }
 }
+
+/* ── Intervals ──────────────────────────────────────────────────────────── */
+#iv-pregame-selectors {
+  display: none;
+}
+.iv-presets {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.iv-preset-btn {
+  flex: 1; min-width: 0;
+  padding: 8px 10px; border-radius: 12px;
+  background: var(--surface); border: 0.5px solid var(--border2);
+  color: var(--text); font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: filter 0.1s, background 0.1s, color 0.1s, border-color 0.1s;
+}
+.iv-preset-btn:hover { filter: brightness(1.05); }
+.iv-preset-btn.active {
+  background: var(--primary); border-color: var(--primary);
+  color: var(--on-primary);
+}
+.iv-checklist {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.iv-check {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; border-radius: 12px;
+  background: var(--surface); border: 0.5px solid var(--border2);
+  cursor: pointer; user-select: none;
+  font-size: 13px; font-weight: 500; color: var(--text);
+}
+.iv-check input[type="checkbox"] {
+  margin: 0; accent-color: var(--primary); cursor: pointer;
+}
+.iv-check-label { flex: 1; }
+.iv-check:has(input:checked) {
+  background: var(--primary-light); border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+#iv-active {
+  display: none; flex-direction: column; gap: 12px;
+}
+.iv-header {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 0 4px;
+}
+.iv-progress {
+  font-size: 13px; font-weight: 600; color: var(--text2);
+  letter-spacing: 0.02em;
+}
+.iv-metrics {
+  display: flex; align-items: center; gap: 12px;
+}
+.iv-metric {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+.iv-metric-num {
+  font-size: 20px; font-weight: 700; color: var(--primary); line-height: 1;
+}
+.iv-metric-label {
+  font-size: 10px; color: var(--text3); letter-spacing: 0.03em;
+}
+.iv-stage {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; min-height: 180px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.iv-ear-only {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  color: var(--text2);
+}
+.iv-ear-icon { color: var(--primary); }
+.iv-ear-text { font-size: 14px; font-weight: 500; color: var(--text2); }
+.iv-staff-wrap { width: 100%; padding: 0.5rem 0; }
+.iv-replay-btn {
+  align-self: center;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 12px;
+  background: var(--surface2); border: 0.5px solid var(--border2);
+  color: var(--text); font-family: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.1s, transform 0.08s;
+}
+.iv-replay-btn:hover { filter: brightness(1.05); }
+.iv-replay-btn:active { transform: scale(0.97); }
+.iv-choices {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.iv-choice-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 12px 8px; border-radius: 12px;
+  background: var(--primary); color: var(--on-primary);
+  border: 1px solid transparent;
+  font-family: inherit; cursor: pointer;
+  transition: filter 0.1s, transform 0.08s;
+}
+.iv-choice-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.iv-choice-btn:active:not(:disabled) { transform: scale(0.96); }
+.iv-choice-btn:disabled { cursor: default; filter: none; opacity: 0.85; }
+.iv-choice-short {
+  font-size: 18px; font-weight: 700; line-height: 1;
+}
+.iv-choice-label {
+  font-size: 11px; font-weight: 500; opacity: 0.85;
+}
+.iv-choice-btn.correct {
+  background: var(--correct-border); color: var(--on-primary);
+}
+.iv-choice-btn.wrong {
+  background: var(--wrong-border); color: var(--on-primary);
+}
+.iv-feedback {
+  min-height: 20px; font-size: 14px; font-weight: 500;
+  color: var(--text3); text-align: center;
+}
+.iv-complete {
+  display: none;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 24px 18px 18px;
+  flex-direction: column; align-items: center;
+  gap: 12px; text-align: center;
+}
+.iv-complete.show { display: flex; }
+#iv-active.complete .iv-header,
+#iv-active.complete .iv-stage,
+#iv-active.complete .iv-replay-btn,
+#iv-active.complete .iv-choices,
+#iv-active.complete .iv-feedback,
+#iv-active.complete #iv-controls-row { display: none; }
+.iv-complete-emoji { font-size: 38px; line-height: 1; }
+.iv-complete-title {
+  font-size: 22px; font-weight: 700; color: var(--text);
+}
+.iv-complete-metrics {
+  display: flex; width: 100%; gap: 10px;
+}
+.iv-complete-metric {
+  flex: 1; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.iv-complete-metric-num {
+  font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1;
+}
+.iv-complete-metric-label {
+  font-size: 11px; color: var(--text3); letter-spacing: 0.03em;
+}
+.iv-complete-detail {
+  font-size: 13px; color: var(--text2);
+}
+.iv-complete-buttons {
+  display: flex; width: 100%; gap: 10px; margin-top: 4px;
+}
+.iv-complete-buttons .pregame-play-btn { flex: 1; }
+@media (max-width: 520px) {
+  .iv-checklist { grid-template-columns: repeat(3, 1fr); }
+  .iv-choices   { grid-template-columns: repeat(2, 1fr); }
+  .iv-complete-metrics, .iv-complete-buttons { flex-direction: column; }
+}
