@@ -410,17 +410,50 @@ function ivRenderStaffIfNeeded() {
   });
 }
 
+function ivIntervalSetLabel() {
+  const set = ivState.selected;
+  const matches = list => set.size === list.length && list.every(s => set.has(s));
+  if (matches(IV_PRESETS.all))       return 'All intervals';
+  if (matches(IV_PRESETS.consonant)) return 'Consonant only';
+  if (matches(IV_PRESETS.dissonant)) return 'Dissonant only';
+  return `Custom (${set.size})`;
+}
+
 function ivEndSession() {
   ivState.active = false;
   const total = ivState.questionCount;
-  const acc = total > 0 ? Math.round((ivState.correct / total) * 100) : 0;
+  const acc = total > 0 ? ivState.correct / total : 0;
+  const accPct = Math.round(acc * 100);
   document.getElementById('iv-complete-score').textContent  = `${ivState.correct}/${total}`;
-  document.getElementById('iv-complete-acc').textContent    = `${acc}%`;
+  document.getElementById('iv-complete-acc').textContent    = `${accPct}%`;
   document.getElementById('iv-complete-streak').textContent = ivState.bestStreak;
   document.getElementById('iv-complete-detail').textContent =
     `${ivState.correct} correct · ${total - ivState.correct} missed`;
   document.getElementById('iv-active').classList.add('complete');
   document.getElementById('iv-complete').classList.add('show');
+
+  window.lastResult = {
+    game: 'intervals',
+    score: ivState.correct,
+    accuracy: acc,
+    duration: total,
+    questionCount: total,
+    bestStreak: ivState.bestStreak,
+    intervalSet: ivIntervalSetLabel(),
+    key: ivIntervalSetLabel(),
+  };
+
+  const form    = document.getElementById('iv-complete-form');
+  const nameEl  = document.getElementById('iv-player-name');
+  const saveBtn = document.getElementById('iv-save-btn');
+  const qualifies = typeof doesResultQualify === 'function' && doesResultQualify(window.lastResult);
+  if (form) form.style.display = qualifies ? 'flex' : 'none';
+  if (qualifies && nameEl && saveBtn) {
+    nameEl.value = localStorage.getItem('mntr-playername') || '';
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+    saveBtn.onclick = saveToLeaderboard;
+  }
 }
 
 function exitIntervals() {
@@ -437,3 +470,4 @@ window.ivApplyPreset    = ivApplyPreset;
 window.ivOnConfigChange = ivOnConfigChange;
 window.ivOnKeyModeChange = ivOnKeyModeChange;
 window.ivReplay         = ivReplay;
+window.ivIntervalSetLabel = ivIntervalSetLabel;
