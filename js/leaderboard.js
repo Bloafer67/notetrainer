@@ -45,6 +45,10 @@ function boardClefLabel(game, clefLabel, rangeMode = window.noteRangeMode) {
 function boardKey(e) {
   const game = e.game || 'name-the-notes';
   if (game === 'play-along') return ['play-along', 'song', e.song || e.key || 'unknown-song'].join('|');
+  if (game === 'intervals') {
+    const count = e.duration ?? e.Duration ?? 25;
+    return ['intervals', 'set', e.key || 'All intervals', count].join('|');
+  }
   const dur = e.duration ?? e.Duration ?? 60;
   return ['timed', game, e.clef || 'Treble', normalizeDrillBoardId(e.key), dur].join('|');
 }
@@ -52,6 +56,13 @@ function boardKey(e) {
 function currentBoardKey() {
   const mode = window.gameMode || 'name-the-notes';
   if (mode === 'play-along') return ['play-along', 'song', getPlayAlongSongKey()].join('|');
+  if (mode === 'intervals') {
+    const setLabel = (typeof window.ivIntervalSetLabel === 'function')
+      ? window.ivIntervalSetLabel()
+      : 'All intervals';
+    const count = window.ivState?.questionCount || 25;
+    return ['intervals', 'set', setLabel, count].join('|');
+  }
   const clefLabel = clef === 'guitar' ? 'Guitar (8vb)' : clef.charAt(0).toUpperCase() + clef.slice(1);
   return ['timed', mode, boardClefLabel(mode, clefLabel), getCurrentDrillBoardId(), gameDuration].join('|');
 }
@@ -59,6 +70,10 @@ function currentBoardKey() {
 function boardLabel(key) {
   const parts = key.split('|');
   if (parts[0] === 'play-along') return `${songLabel(parts[2])} · Play Along`;
+  if (parts[0] === 'intervals') {
+    const [, , setLabel, count] = parts;
+    return `${setLabel} · ${count} questions`;
+  }
   const [, , clefLabel, boardId, duration] = parts;
   return `${getDrillBoardSummary(boardId)} · ${clefLabel} · ${duration}s`;
 }
@@ -95,8 +110,20 @@ function comparePlayAlongEntries(a, b) {
   return new Date(b.created_at || 0) - new Date(a.created_at || 0);
 }
 
+function compareIntervalsEntries(a, b) {
+  const scoreDiff = (Number(b.score) || 0) - (Number(a.score) || 0);
+  if (scoreDiff !== 0) return scoreDiff;
+
+  const accuracyDiff = normalizeAccuracy(b.accuracy) - normalizeAccuracy(a.accuracy);
+  if (accuracyDiff !== 0) return accuracyDiff;
+
+  return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+}
+
 function sortBoardEntries(entries, key) {
-  const compare = key.startsWith('play-along|') ? comparePlayAlongEntries : compareScoreEntries;
+  let compare = compareScoreEntries;
+  if (key.startsWith('play-along|')) compare = comparePlayAlongEntries;
+  else if (key.startsWith('intervals|')) compare = compareIntervalsEntries;
   return [...entries].sort(compare);
 }
 
@@ -114,6 +141,12 @@ function doesResultQualify(result, key = currentBoardKey()) {
     return comparePlayAlongEntries(result, board[board.length - 1]) <= 0;
   }
 
+  if (result.game === 'intervals') {
+    if ((Number(result.score) || 0) <= 0) return false;
+    if (board.length < 10) return true;
+    return compareIntervalsEntries(result, board[board.length - 1]) <= 0;
+  }
+
   if ((Number(result.score) || 0) <= 0) return false;
   if (board.length < 10) return true;
   return compareScoreEntries(result, board[board.length - 1]) <= 0;
@@ -125,6 +158,12 @@ function getLeaderboardSaveElements() {
     return {
       nameEl: document.getElementById('pa-player-name'),
       saveBtn: document.getElementById('pa-save-btn'),
+    };
+  }
+  if (window.lastResult?.game === 'intervals' && !recapVisible) {
+    return {
+      nameEl: document.getElementById('iv-player-name'),
+      saveBtn: document.getElementById('iv-save-btn'),
     };
   }
   return {
@@ -149,6 +188,20 @@ function buildLeaderboardPayload(name) {
       Duration: 0,
       song: songKey,
       time_ms: Math.round(Number(result.time_ms) || 0),
+      accuracy: normalizeAccuracy(result.accuracy),
+    };
+  }
+
+  if (result.game === 'intervals') {
+    const count = result.questionCount ?? result.duration ?? 25;
+    return {
+      name,
+      score: result.score ?? 0,
+      clef: '—',
+      key: result.intervalSet || result.key || 'All intervals',
+      game: 'intervals',
+      duration: count,
+      Duration: count,
       accuracy: normalizeAccuracy(result.accuracy),
     };
   }
@@ -270,6 +323,7 @@ function renderBoard(key) {
   }
 
   const isPlayAlongBoard = key.startsWith('play-along|');
+  const isIntervalsBoard = key.startsWith('intervals|');
 
   board.forEach((entry, index) => {
     const isYou = entry.id && entry.id === lbHighlightId;
@@ -279,12 +333,19 @@ function renderBoard(key) {
     const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
     const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1;
     const date = new Date(entry.created_at).toLocaleDateString();
-    const primaryValue = isPlayAlongBoard
-      ? formatElapsedMs(entryTimeMs(entry), true)
-      : entry.score;
-    const metaValue = isPlayAlongBoard
-      ? `${formatAccuracy(entry.accuracy)} accuracy · ${date}`
-      : date;
+    let primaryValue;
+    let metaValue;
+    if (isPlayAlongBoard) {
+      primaryValue = formatElapsedMs(entryTimeMs(entry), true);
+      metaValue = `${formatAccuracy(entry.accuracy)} accuracy · ${date}`;
+    } else if (isIntervalsBoard) {
+      const total = Number(entry.duration) || Number(entry.Duration) || 0;
+      primaryValue = total ? `${entry.score}/${total}` : entry.score;
+      metaValue = `${formatAccuracy(entry.accuracy)} accuracy · ${date}`;
+    } else {
+      primaryValue = entry.score;
+      metaValue = date;
+    }
 
     row.innerHTML = `
       <div class="lb-rank ${rankClass}">${medal}</div>
