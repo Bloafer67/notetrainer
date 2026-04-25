@@ -26,6 +26,7 @@ const NOTE_FREQS = {
 };
 
 let activeSynth = null;
+let activeIntervalSynths = [];
 
 // ── Play a note ───────────────────────────────────────────────────────────
 // noteName: e.g. 'F#4', 'Bb3', 'C5'
@@ -46,5 +47,41 @@ async function playNote(noteName) {
     activeSynth.triggerAttackRelease(freq, '4n');
   } catch (e) {
     // Silently ignore audio errors (e.g. browser autoplay policy)
+  }
+}
+
+// ── Play an interval ──────────────────────────────────────────────────────
+// freq1, freq2 are two frequencies. mode: 'ascending' (1→2), 'descending' (2→1),
+// 'harmonic' (both at once). noteDur seconds per note for sequenced modes.
+async function playIntervalFreqs(freq1, freq2, mode, noteDur = 0.7) {
+  if (muted || !window.Tone) return;
+  if (!freq1 || !freq2) return;
+  try {
+    await Tone.start();
+    activeIntervalSynths.forEach(s => { try { s.dispose(); } catch (e) {} });
+    activeIntervalSynths = [];
+
+    const make = () => new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.002, decay: 0.8, sustain: 0.3, release: 1.6 },
+      volume: -8,
+    }).toDestination();
+
+    if (mode === 'harmonic') {
+      const a = make(), b = make();
+      activeIntervalSynths.push(a, b);
+      const now = Tone.now();
+      a.triggerAttackRelease(freq1, noteDur, now);
+      b.triggerAttackRelease(freq2, noteDur, now);
+      return;
+    }
+    const [first, second] = mode === 'descending' ? [freq2, freq1] : [freq1, freq2];
+    const a = make(), b = make();
+    activeIntervalSynths.push(a, b);
+    const now = Tone.now();
+    a.triggerAttackRelease(first,  noteDur, now);
+    b.triggerAttackRelease(second, noteDur, now + noteDur + 0.05);
+  } catch (e) {
+    // Silently ignore audio errors
   }
 }
