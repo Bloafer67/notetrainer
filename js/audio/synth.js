@@ -1,10 +1,12 @@
 // ── audio/synth.js ────────────────────────────────────────────────────────
-// Handles: piano note playback via Tone.js
+// Handles: piano note playback via Tone.js Sampler (Salamander Grand Piano)
 // Depends on: muted (main.js), Tone (CDN script tag in index.html)
+//
+// NOTE_FREQS is also consumed by pitch-detection in the games for matching
+// mic input to expected frequencies, so it stays even though playback no
+// longer goes through it directly.
 
 // ── Note frequency table ──────────────────────────────────────────────────
-// Covers all notes used across treble, bass, and guitar clefs
-// plus accidentals for all supported key signatures
 const NOTE_FREQS = {
   'A1':55.00,'B1':61.74,
   'C2':65.41,'D2':73.42,'E2':82.41,'F2':87.31,'G2':98.00,'A2':110.00,'B2':123.47,
@@ -25,63 +27,50 @@ const NOTE_FREQS = {
   'Eb6':1244.51,
 };
 
-let activeSynth = null;
-let activeIntervalSynths = [];
+// ── Sampler ───────────────────────────────────────────────────────────────
+// Salamander Grand Piano (CC-BY) hosted by Tone.js. Loading every third
+// semitone gives natural-sounding interpolation across the 5-octave range
+// the games actually use (A1–E6).
+const piano = window.Tone ? new Tone.Sampler({
+  urls: {
+    A1: 'A1.mp3',
+    C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
+    C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
+    C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+    C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
+    C6: 'C6.mp3',
+  },
+  release: 1.2,
+  baseUrl: 'https://tonejs.github.io/audio/salamander/',
+}).toDestination() : null;
 
-// ── Play a note ───────────────────────────────────────────────────────────
-// noteName: e.g. 'F#4', 'Bb3', 'C5'
+// ── Play a single note ────────────────────────────────────────────────────
 async function playNote(noteName) {
-  if (muted || !window.Tone) return;
+  if (muted || !piano) return;
   const freq = NOTE_FREQS[noteName];
   if (!freq) return;
   try {
     await Tone.start(); // required by browsers — must follow a user gesture
-    if (activeSynth) {
-      try { activeSynth.dispose(); } catch (e) {}
-    }
-    activeSynth = new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.002, decay: 0.8, sustain: 0.3, release: 2.0 },
-      volume: -6,
-    }).toDestination();
-    activeSynth.triggerAttackRelease(freq, '4n');
-  } catch (e) {
-    // Silently ignore audio errors (e.g. browser autoplay policy)
-  }
+    piano.triggerAttackRelease(freq, '2n');
+  } catch (e) {}
 }
 
 // ── Play an interval ──────────────────────────────────────────────────────
-// freq1, freq2 are two frequencies. mode: 'ascending' (1→2), 'descending' (2→1),
-// 'harmonic' (both at once). noteDur seconds per note for sequenced modes.
+// mode: 'ascending' (1→2), 'descending' (2→1), 'harmonic' (both at once).
 async function playIntervalFreqs(freq1, freq2, mode, noteDur = 0.7) {
-  if (muted || !window.Tone) return;
+  if (muted || !piano) return;
   if (!freq1 || !freq2) return;
   try {
     await Tone.start();
-    activeIntervalSynths.forEach(s => { try { s.dispose(); } catch (e) {} });
-    activeIntervalSynths = [];
-
-    const make = () => new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.002, decay: 0.8, sustain: 0.3, release: 1.6 },
-      volume: -8,
-    }).toDestination();
-
     if (mode === 'harmonic') {
-      const a = make(), b = make();
-      activeIntervalSynths.push(a, b);
       const now = Tone.now();
-      a.triggerAttackRelease(freq1, noteDur, now);
-      b.triggerAttackRelease(freq2, noteDur, now);
+      piano.triggerAttackRelease(freq1, noteDur, now);
+      piano.triggerAttackRelease(freq2, noteDur, now);
       return;
     }
     const [first, second] = mode === 'descending' ? [freq2, freq1] : [freq1, freq2];
-    const a = make(), b = make();
-    activeIntervalSynths.push(a, b);
     const now = Tone.now();
-    a.triggerAttackRelease(first,  noteDur, now);
-    b.triggerAttackRelease(second, noteDur, now + noteDur + 0.05);
-  } catch (e) {
-    // Silently ignore audio errors
-  }
+    piano.triggerAttackRelease(first,  noteDur, now);
+    piano.triggerAttackRelease(second, noteDur, now + noteDur + 0.05);
+  } catch (e) {}
 }
