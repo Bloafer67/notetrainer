@@ -15,8 +15,8 @@ const PITCH_MIN_HZ = 50;
 const PITCH_MAX_HZ = 1500;
 const PITCH_MIN_RMS = 0.006;
 const PITCH_MIN_CLARITY = 0.72;
-const PITCH_DISPLAY_MIN_CLARITY = 0.52;
 const PITCH_YIN_THRESHOLD = 0.12;
+const PITCH_OCTAVE_CORRECTION_MAX_TARGET_HZ = 131;
 
 // ── Start mic + detection ─────────────────────────────────────────────────
 async function startPitchDetection(onUpdate) {
@@ -135,7 +135,7 @@ function detectPitch(buf, sampleRate) {
       }
     }
     if (tauEstimate < 0 || 1 - bestValue < PITCH_MIN_CLARITY) {
-      return detectPitchFallback(centered, sampleRate, rms, Math.max(0, 1 - bestValue));
+      return pitchFrame(null, Math.max(0, 1 - bestValue), rms);
     }
   }
 
@@ -150,54 +150,7 @@ function detectPitch(buf, sampleRate) {
   const clarity = Math.max(0, Math.min(1, 1 - y2));
 
   if (hz < PITCH_MIN_HZ || hz > PITCH_MAX_HZ) return pitchFrame(null, clarity, rms);
-  if (clarity < PITCH_MIN_CLARITY) return detectPitchFallback(centered, sampleRate, rms, clarity);
-  return pitchFrame(hz, clarity, rms);
-}
-
-function detectPitchFallback(buf, sampleRate, rms, priorClarity = 0) {
-  const SIZE = buf.length;
-  const minLag = Math.max(2, Math.floor(sampleRate / PITCH_MAX_HZ));
-  const maxLag = Math.min(Math.floor(SIZE / 2), Math.floor(sampleRate / PITCH_MIN_HZ));
-  const corr = new Float32Array(maxLag + 1);
-
-  let corrZero = 0;
-  for (let i = 0; i < SIZE; i++) corrZero += buf[i] * buf[i];
-  if (!corrZero) return pitchFrame(null, priorClarity, rms);
-
-  for (let lag = 0; lag <= maxLag; lag++) {
-    let sum = 0;
-    for (let i = 0; i < SIZE - lag; i++) {
-      sum += buf[i] * buf[i + lag];
-    }
-    corr[lag] = sum;
-  }
-
-  let d = minLag;
-  while (d + 1 <= maxLag && corr[d] > corr[d - 1]) d++;
-  while (d + 1 <= maxLag && corr[d] < corr[d - 1]) d++;
-
-  let maxVal = -Infinity;
-  let maxPos = d;
-  for (let i = Math.max(d, minLag); i <= maxLag; i++) {
-    if (corr[i] > maxVal) {
-      maxVal = corr[i];
-      maxPos = i;
-    }
-  }
-
-  const clarity = Math.max(priorClarity, Math.max(0, Math.min(1, maxVal / corrZero)));
-  if (maxPos < 2 || clarity < PITCH_DISPLAY_MIN_CLARITY) {
-    return pitchFrame(null, clarity, rms);
-  }
-
-  const y1 = corr[maxPos - 1] ?? 0;
-  const y2 = corr[maxPos];
-  const y3 = corr[maxPos + 1] ?? 0;
-  const denom = 2 * (2 * y2 - y1 - y3);
-  const refinedLag = denom === 0 ? maxPos : maxPos - (y3 - y1) / denom;
-  const hz = sampleRate / refinedLag;
-
-  if (hz < PITCH_MIN_HZ || hz > PITCH_MAX_HZ) return pitchFrame(null, clarity, rms);
+  if (clarity < PITCH_MIN_CLARITY) return pitchFrame(null, clarity, rms);
   return pitchFrame(hz, clarity, rms);
 }
 
@@ -237,17 +190,22 @@ function pitchHzForTarget(frame, targetHz, thresholdCents = 80) {
   const hz = normalized.hz;
   if (!hz || !targetHz) return null;
 
-  const candidates = [hz, hz / 2, hz * 2]
-    .filter(candidate => candidate >= PITCH_MIN_HZ && candidate <= PITCH_MAX_HZ)
-    .map(candidate => ({ hz: candidate, cents: Math.abs(pitchCents(candidate, targetHz)) }))
-    .sort((a, b) => a.cents - b.cents);
+  const directCents = Math.abs(pitchCents(hz, targetHz));
+  if (directCents <= thresholdCents) return hz;
 
-  return candidates[0]?.cents <= thresholdCents ? candidates[0].hz : hz;
+  if (targetHz <= PITCH_OCTAVE_CORRECTION_MAX_TARGET_HZ) {
+    const octaveDown = hz / 2;
+    if (Math.abs(pitchCents(octaveDown, targetHz)) <= thresholdCents) {
+      return octaveDown;
+    }
+  }
+
+  return hz;
 }
 
 function pitchFrameIsUsable(frame) {
   const normalized = normalizePitchFrame(frame);
-  return !!normalized.hz && normalized.clarity >= PITCH_DISPLAY_MIN_CLARITY && normalized.rms >= PITCH_MIN_RMS;
+  return !!normalized.hz && normalized.clarity >= PITCH_MIN_CLARITY && normalized.rms >= PITCH_MIN_RMS;
 }
 
 // ── Hz → nearest note + cents deviation ──────────────────────────────────

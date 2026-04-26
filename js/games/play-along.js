@@ -4,7 +4,6 @@
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const PA_HIT_CENTS   = 40;
-const PA_WRONG_HOLD_MS = 240;
 const PA_HIT_WINDOW_SIZE = 5;
 const PA_HIT_REQUIRED_FRAMES = 3;
 const PA_HIT_WINDOW_MAX_MS = 180;
@@ -503,10 +502,15 @@ function pa_countWrongAttempt() {
 function pa_onPitchFrame(frame) {
   if (!pa_active) return;
   const pitchFrame = normalizePitchFrame(frame);
-  const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
+  const displayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
 
-  if (!rawDisplayHz || pa_cursorEnded()) {
-    pa_smoothHz = null;
+  if (displayHz && pa_smoothHz) {
+    pa_smoothHz = 0.25 * displayHz + 0.75 * pa_smoothHz;
+  } else {
+    pa_smoothHz = displayHz || null;
+  }
+
+  if (!displayHz || pa_cursorEnded()) {
     pa_updatePitchOverlay(null, false);
     paClearWrongTimer(true);
     pa_hitArmed = true;
@@ -519,16 +523,9 @@ function pa_onPitchFrame(frame) {
     return;
   }
 
-  const displayHz = pitchHzForTarget(pitchFrame, targetHz, PA_HIT_CENTS);
-  if (displayHz && pa_smoothHz) {
-    pa_smoothHz = 0.25 * displayHz + 0.75 * pa_smoothHz;
-  } else {
-    pa_smoothHz = displayHz || null;
-  }
-
   if (!pa_hitArmed && pitchFrame.onset) pa_hitArmed = true;
 
-  const scoreHz = displayHz;
+  const scoreHz = pitchHzForTarget(pitchFrame, targetHz, PA_HIT_CENTS);
   const cents = Math.abs(pitchCents(scoreHz, targetHz));
   const inRange = cents <= PA_HIT_CENTS;
 
@@ -549,7 +546,7 @@ function pa_onPitchFrame(frame) {
       pa_wrongTimer = null;
       if (!pa_active) return;
       pa_countWrongAttempt();
-    }, PA_WRONG_HOLD_MS);
+    }, PA_HIT_HOLD_MS);
   }
 }
 
