@@ -78,6 +78,92 @@ function boardLabel(key) {
   return `${getDrillBoardSummary(boardId)} · ${clefLabel} · ${duration}s`;
 }
 
+// ── URL params ⇄ board key ────────────────────────────────────────────────
+// Internal boardKey stays pipe-delimited; URL params are a separate
+// URL-friendly encoding the router hands back via window.location.search.
+function gameFromKey(key) {
+  if (!key) return null;
+  const parts = key.split('|');
+  if (parts[0] === 'play-along') return 'play-along';
+  if (parts[0] === 'intervals')  return 'intervals';
+  if (parts[0] === 'timed')      return parts[1] || null;
+  return null;
+}
+
+function clefSlugFromLabel(clefDisplay) {
+  if (!clefDisplay) return 'treble';
+  if (clefDisplay === 'Guitar (8vb)') return 'guitar';
+  return clefDisplay.toLowerCase();
+}
+
+function clefLabelFromSlug(clefSlug) {
+  const slug = (clefSlug || 'treble').toLowerCase();
+  if (slug === 'guitar') return 'Guitar (8vb)';
+  return slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+
+function rangeSlugFromLabel(rangeLabel) {
+  return rangeLabel === 'Full range' ? 'full-range' : 'staff-only';
+}
+
+function boardSelectionToParams(key) {
+  if (!key) return {};
+  const parts = key.split('|');
+  if (parts[0] === 'play-along') {
+    return { game: 'play-along', song: parts[2] || '' };
+  }
+  if (parts[0] === 'intervals') {
+    return { game: 'intervals', set: parts[2] || '', count: parts[3] || '' };
+  }
+  if (parts[0] === 'timed') {
+    const [, game, clefLabel, boardId, duration] = parts;
+    const [clefDisplay, rangeLabel] = (clefLabel || '').split(' · ');
+    return {
+      game,
+      clef: clefSlugFromLabel(clefDisplay),
+      range: rangeSlugFromLabel(rangeLabel),
+      board: boardId || '',
+      duration: duration || '',
+    };
+  }
+  return {};
+}
+
+function paramsToBoardSelection(params) {
+  if (!params || !params.game) return null;
+  const game = params.game;
+  if (game === 'play-along') {
+    if (!params.song) return null;
+    return ['play-along', 'song', params.song].join('|');
+  }
+  if (game === 'intervals') {
+    const setLabel = params.set || 'All intervals';
+    const count = params.count || 25;
+    return ['intervals', 'set', setLabel, count].join('|');
+  }
+  if (window.router?.isGameMode?.(game)) {
+    const clefDisplay = clefLabelFromSlug(params.clef);
+    const rangeSlug = params.range === 'full-range' ? 'full-range' : 'staff-only';
+    const rangeLabel = (typeof getDrillRangeLabel === 'function')
+      ? getDrillRangeLabel(rangeSlug)
+      : (rangeSlug === 'full-range' ? 'Full range' : 'Staff only');
+    const clefLabel = `${clefDisplay} · ${rangeLabel}`;
+    const boardId = (typeof normalizeDrillBoardId === 'function')
+      ? normalizeDrillBoardId(params.board)
+      : (params.board || 'c-major');
+    const duration = params.duration || 60;
+    return ['timed', game, clefLabel, boardId, duration].join('|');
+  }
+  return null;
+}
+
+// Called by main.js on view change. Sets lbSelectedKey from URL params if
+// they decode to a valid board; otherwise nulls it out so fetchLeaderboard
+// falls back to the user's currentBoardKey().
+function setLbSelectionFromParams(params) {
+  lbSelectedKey = paramsToBoardSelection(params || {});
+}
+
 function normalizeAccuracy(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return 1;
@@ -258,7 +344,7 @@ async function saveToLeaderboard() {
 
 // ── Fetch ─────────────────────────────────────────────────────────────────
 async function fetchLeaderboard() {
-  lbSelectedKey = currentBoardKey();
+  if (!lbSelectedKey) lbSelectedKey = currentBoardKey();
   try {
     const data = await sbFetch(
       '/rest/v1/leaderboard?select=*&order=created_at.desc&limit=2000',
@@ -282,15 +368,16 @@ function renderBoardDropdown() {
   const sel = document.getElementById('lb-board-select');
   if (!sel) return;
 
-  const currentMode = window.gameMode || 'name-the-notes';
+  // Filter by the selected board's game so deep-linked boards still appear in
+  // the dropdown even when the active gameMode (Game tab) is something else.
+  const filterGame = gameFromKey(lbSelectedKey) || window.gameMode || 'name-the-notes';
   const keys = [...new Set(
     lbCache
-      .filter(e => (e.game || 'name-the-notes') === currentMode)
+      .filter(e => (e.game || 'name-the-notes') === filterGame)
       .map(boardKey)
   )].sort((a, b) => boardLabel(a).localeCompare(boardLabel(b)));
 
-  const myKey = currentBoardKey();
-  if (!keys.includes(myKey)) keys.unshift(myKey);
+  if (lbSelectedKey && !keys.includes(lbSelectedKey)) keys.unshift(lbSelectedKey);
 
   sel.innerHTML = '';
   keys.forEach(key => {
@@ -306,6 +393,7 @@ function onLbBoardChange() {
   const sel = document.getElementById('lb-board-select');
   if (sel) lbSelectedKey = sel.value;
   renderBoard(lbSelectedKey);
+  window.router?.pushView?.('leaderboard', boardSelectionToParams(lbSelectedKey));
 }
 
 function renderBoard(key) {
