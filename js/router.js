@@ -31,11 +31,32 @@
     return GAME_MODES.includes(view);
   }
 
-  function pushView(view) {
+  function paramsFromSearch(search) {
+    const out = {};
+    const sp = new URLSearchParams(search || '');
+    for (const [k, v] of sp.entries()) out[k] = v;
+    return out;
+  }
+
+  function buildQueryString(params) {
+    if (!params) return '';
+    const sp = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      const value = params[key];
+      if (value === undefined || value === null || value === '') return;
+      sp.append(key, String(value));
+    });
+    const qs = sp.toString();
+    return qs ? '?' + qs : '';
+  }
+
+  function pushView(view, params) {
     const slug = SLUG_BY_VIEW[view] || '/';
-    if (window.location.pathname === slug) return;
+    const target = slug + buildQueryString(params);
+    const current = window.location.pathname + window.location.search;
+    if (current === target) return;
     try {
-      history.pushState({ view }, '', slug);
+      history.pushState({ view, params: params || {} }, '', target);
     } catch (e) {
       // pushState throws on file:// URLs — safe to ignore for local testing
     }
@@ -43,15 +64,21 @@
 
   function init({ onRoute }) {
     const initial = viewFromPath(window.location.pathname);
+    const initialParams = paramsFromSearch(window.location.search);
     // Replace state so popstate has something to read if user goes back to entry
     try {
-      history.replaceState({ view: initial }, '', window.location.pathname);
+      history.replaceState(
+        { view: initial, params: initialParams },
+        '',
+        window.location.pathname + window.location.search
+      );
     } catch (e) {}
-    onRoute(initial, { source: 'initial' });
+    onRoute(initial, { params: initialParams, source: 'initial' });
 
     window.addEventListener('popstate', e => {
       const view = e.state?.view || viewFromPath(window.location.pathname);
-      onRoute(view, { source: 'popstate' });
+      const params = e.state?.params || paramsFromSearch(window.location.search);
+      onRoute(view, { params, source: 'popstate' });
     });
   }
 
@@ -59,6 +86,7 @@
     init,
     pushView,
     viewFromPath,
+    paramsFromSearch,
     isGameMode,
     GAME_MODES,
     DEFAULT_VIEW,

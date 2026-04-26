@@ -190,8 +190,9 @@ const GAME_MODE_CONFIG = {
 // Apply a view to the DOM. Called by the router on initial load + popstate,
 // and by user-driven navigation (onGameModeChange / navigate / navigateToGame).
 // Never touches history — that's the router's job.
-function applyView(view) {
+function applyView(view, params) {
   if (view === 'leaderboard') {
+    window.setLbSelectionFromParams?.(params || {});
     switchTab('leaderboard');
     return;
   }
@@ -362,7 +363,9 @@ function initApp() {
   setTimerDisplay(null);
 
   // Router owns initial deep-link parsing + popstate. applyView handles the DOM.
-  window.router.init({ onRoute: applyView });
+  window.router.init({
+    onRoute: (view, { params }) => applyView(view, params),
+  });
 
   fetchLeaderboard();
 }
