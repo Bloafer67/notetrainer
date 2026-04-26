@@ -7,6 +7,13 @@ let analyserNode  = null;
 let micStream     = null;
 let pitchRAF      = null;
 let onPitchUpdate = null;
+let onDiagnostic  = null;
+
+// Tunable thresholds — kept here so the debug page can display them.
+const PITCH_RMS_GATE     = 0.0035;
+const PITCH_CLARITY_GATE = 0.6;
+const PITCH_HZ_MIN       = 60;
+const PITCH_HZ_MAX       = 1500;
 
 // ── Start mic + detection ─────────────────────────────────────────────────
 async function startPitchDetection(onUpdate) {
@@ -47,21 +54,30 @@ function detectLoop() {
   const buf = new Float32Array(analyserNode.fftSize);
   analyserNode.getFloatTimeDomainData(buf);
 
-  const hz = detectPitch(buf, audioCtx.sampleRate);
+  const result = detectPitchVerbose(buf, audioCtx.sampleRate);
+  const hz = result.hz;
   if (onPitchUpdate) onPitchUpdate(hz);
+  if (onDiagnostic) onDiagnostic(result);
 }
 
 // ── Pitch detection — improved autocorrelation ────────────────────────────
-// More forgiving RMS threshold and cleaner peak-finding
+// Returns just hz (or null) for normal callers.
 function detectPitch(buf, sampleRate) {
+  return detectPitchVerbose(buf, sampleRate).hz;
+}
+
+// Same algorithm but returns a full diagnostic object every frame:
+//   { hz, rms, clarity, refinedPos, reason }
+// hz is null when a gate fails; reason names the gate ('rms', 'clarity',
+// 'no-peak', 'out-of-range') or 'ok' when hz is valid.
+function detectPitchVerbose(buf, sampleRate) {
   const SIZE = buf.length;
 
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.0035) return null;
+  if (rms < PITCH_RMS_GATE) return { hz: null, rms, clarity: 0, refinedPos: 0, reason: 'rms' };
 
-  // Autocorrelation
   const corr = new Float32Array(SIZE);
   for (let lag = 0; lag < SIZE; lag++) {
     let sum = 0;
@@ -71,21 +87,21 @@ function detectPitch(buf, sampleRate) {
     corr[lag] = sum;
   }
 
-  // Find the first dip (end of first lobe)
   let d = 1;
   while (d < SIZE / 2 && corr[d] > corr[d - 1]) d++;
   while (d < SIZE / 2 && corr[d] < corr[d - 1]) d++;
 
-  // Find the highest peak after the dip
   let maxVal = -Infinity, maxPos = d;
   for (let i = d; i < SIZE / 2; i++) {
     if (corr[i] > maxVal) { maxVal = corr[i]; maxPos = i; }
   }
 
-  if (maxVal < corr[0] * 0.6) return null;
-  if (maxPos < 2) return null;
+  const energy = corr[0] || 1;
+  const clarity = maxVal / energy;
 
-  // Parabolic interpolation for smoother frequency
+  if (clarity < PITCH_CLARITY_GATE) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'clarity' };
+  if (maxPos < 2) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'no-peak' };
+
   const y1 = corr[maxPos - 1] ?? 0;
   const y2 = corr[maxPos];
   const y3 = corr[maxPos + 1] ?? 0;
@@ -93,10 +109,16 @@ function detectPitch(buf, sampleRate) {
   const refinedPos = denom === 0 ? maxPos : maxPos - (y3 - y1) / denom;
 
   const hz = sampleRate / refinedPos;
+  if (hz < PITCH_HZ_MIN || hz > PITCH_HZ_MAX) {
+    return { hz: null, rms, clarity, refinedPos, reason: 'out-of-range' };
+  }
+  return { hz, rms, clarity, refinedPos, reason: 'ok' };
+}
 
-  // Clamp to human vocal + instrument range
-  if (hz < 60 || hz > 1500) return null;
-  return hz;
+// Debug hook — receives the full diagnostic object on every frame. Pass null
+// to clear. The main pitch callback is unaffected.
+function setPitchDiagnosticListener(fn) {
+  onDiagnostic = fn || null;
 }
 
 // ── Hz → nearest note + cents deviation ──────────────────────────────────
