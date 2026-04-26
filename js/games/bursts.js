@@ -4,11 +4,9 @@
 
 const BURSTS_PER_BURST = 3;
 const BURSTS_HIT_CENTS = 80;
+const BURSTS_HOLD_MS   = 280;
 const BURSTS_REARM_CENTS      = 140;
 const BURSTS_REARM_SILENCE_MS = 120;
-const BURSTS_HIT_WINDOW_SIZE  = 5;
-const BURSTS_HIT_REQUIRED_FRAMES = 3;
-const BURSTS_HIT_WINDOW_MAX_MS = 180;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let bursts_active   = false;
@@ -19,7 +17,6 @@ let bursts_index    = 0;
 let bursts_hitArmed = true;
 let bursts_rearmHz  = null;
 let bursts_silentAt = 0;
-let bursts_hitFrames = [];
 
 function burstsGuideColor(hz = bursts_smoothHz) {
   const target = bursts_notes[bursts_index];
@@ -43,26 +40,10 @@ function burstsClearHitTimer() {
     clearTimeout(bursts_hitTimer);
     bursts_hitTimer = null;
   }
-  bursts_hitFrames = [];
 }
 
-function burstsRecordHitFrame(inRange) {
-  const now = performance.now();
-  bursts_hitFrames.push({ inRange, at: now });
-  bursts_hitFrames = bursts_hitFrames
-    .filter(frame => now - frame.at <= BURSTS_HIT_WINDOW_MAX_MS)
-    .slice(-BURSTS_HIT_WINDOW_SIZE);
-  return bursts_hitFrames.filter(frame => frame.inRange).length >= BURSTS_HIT_REQUIRED_FRAMES;
-}
-
-function burstsMaybeRearm(frame, hz) {
+function burstsMaybeRearm(hz) {
   if (bursts_hitArmed) return true;
-
-  if (frame?.onset) {
-    bursts_hitArmed = true;
-    bursts_rearmHz = null;
-    return true;
-  }
 
   if (!hz) {
     if (!bursts_silentAt) bursts_silentAt = performance.now();
@@ -111,7 +92,6 @@ async function startBursts() {
   bursts_hitArmed = true;
   bursts_rearmHz  = null;
   bursts_silentAt = 0;
-  bursts_hitFrames = [];
 
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
@@ -190,28 +170,23 @@ async function burstsRenderCurrent() {
 }
 
 // ── Pitch frame ──────────────────────────────────────────────────────────
-function onBurstsPitchFrame(frame) {
+function onBurstsPitchFrame(hz) {
   if (!bursts_active || paused) return;
-  const pitchFrame = normalizePitchFrame(frame);
-  const target = bursts_notes[bursts_index];
-  const targetHz = target ? NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name] : null;
-  const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
-  const displayHz = rawDisplayHz && targetHz
-    ? pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS)
-    : rawDisplayHz;
 
-  if (displayHz && bursts_smoothHz) {
-    bursts_smoothHz = 0.25 * displayHz + 0.75 * bursts_smoothHz;
-  } else if (displayHz) {
-    bursts_smoothHz = displayHz;
+  if (hz && bursts_smoothHz) {
+    bursts_smoothHz = 0.25 * hz + 0.75 * bursts_smoothHz;
+  } else if (hz) {
+    bursts_smoothHz = hz;
   } else {
     bursts_smoothHz = null;
   }
 
+  const target = bursts_notes[bursts_index];
   updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
 
-  if (!displayHz) {
-    burstsMaybeRearm(pitchFrame, null);
+  if (!hz) {
+    burstsClearHitTimer();
+    burstsMaybeRearm(null);
     return;
   }
 
@@ -222,17 +197,24 @@ function onBurstsPitchFrame(frame) {
     return;
   }
 
-  if (!burstsMaybeRearm(pitchFrame, displayHz)) {
+  if (!burstsMaybeRearm(hz)) {
     burstsClearHitTimer();
     return;
   }
 
+  const targetHz = NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name];
   if (!targetHz) return;
-  const scoreHz = pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS);
-  const cents = pitchCents(scoreHz, targetHz);
+  const cents = 1200 * Math.log2(hz / targetHz);
 
-  if (burstsRecordHitFrame(Math.abs(cents) <= BURSTS_HIT_CENTS)) {
-    onBurstsNoteHit();
+  if (Math.abs(cents) <= BURSTS_HIT_CENTS) {
+    if (!bursts_hitTimer) {
+      bursts_hitTimer = setTimeout(() => {
+        bursts_hitTimer = null;
+        onBurstsNoteHit();
+      }, BURSTS_HOLD_MS);
+    }
+  } else {
+    burstsClearHitTimer();
   }
 }
 
