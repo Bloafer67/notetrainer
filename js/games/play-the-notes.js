@@ -1,12 +1,14 @@
 // ── games/play-the-notes.js ───────────────────────────────────────────────
-// Pitch detected → moving line on staff → hold to score
+// Pitch detected → moving line on staff → confident frames score
 // Features: full guitar range, arrows for out-of-range pitch,
 //           tuner inset, ding on hit, note name label, exit/restart
 
 const HIT_THRESHOLD_CENTS   = 80;  // more forgiving — was 50
-const HIT_HOLD_MS           = 280;
 const HIT_REARM_CENTS       = 140;
 const HIT_REARM_SILENCE_MS  = 120;
+const HIT_WINDOW_SIZE       = 5;
+const HIT_REQUIRED_FRAMES   = 3;
+const HIT_WINDOW_MAX_MS     = 180;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let ptn_active    = false;
@@ -17,6 +19,7 @@ let ptn_bounds    = null; // cached staff bounds after each render
 let ptn_hitArmed  = true;
 let ptn_rearmHz   = null;
 let ptn_silentAt  = 0;
+let ptn_hitFrames = [];
 
 function ptnGuideColor(hz = ptn_smoothHz) {
   if (!current) return getNotePalette(null).pitch;
@@ -34,10 +37,26 @@ function ptnClearHitTimer() {
     clearTimeout(ptn_hitTimer);
     ptn_hitTimer = null;
   }
+  ptn_hitFrames = [];
 }
 
-function ptnMaybeRearm(hz) {
+function ptnRecordHitFrame(inRange) {
+  const now = performance.now();
+  ptn_hitFrames.push({ inRange, at: now });
+  ptn_hitFrames = ptn_hitFrames
+    .filter(frame => now - frame.at <= HIT_WINDOW_MAX_MS)
+    .slice(-HIT_WINDOW_SIZE);
+  return ptn_hitFrames.filter(frame => frame.inRange).length >= HIT_REQUIRED_FRAMES;
+}
+
+function ptnMaybeRearm(frame, hz) {
   if (ptn_hitArmed) return true;
+
+  if (frame?.onset) {
+    ptn_hitArmed = true;
+    ptn_rearmHz = null;
+    return true;
+  }
 
   if (!hz) {
     if (!ptn_silentAt) ptn_silentAt = performance.now();
@@ -88,6 +107,7 @@ async function startPlayTheNotes() {
   ptn_hitArmed  = true;
   ptn_rearmHz   = null;
   ptn_silentAt  = 0;
+  ptn_hitFrames = [];
 
   score = 0; streak = 0; timeLeft = gameDuration;
   answered = false; gameActive = true; paused = false;
@@ -158,14 +178,20 @@ async function ptnRenderCurrent() {
 }
 
 // ── Pitch frame ~60fps ────────────────────────────────────────────────────
-function onPitchFrame(hz) {
+function onPitchFrame(frame) {
   if (!ptn_active || paused) return;
+  const pitchFrame = normalizePitchFrame(frame);
+  const targetHz = current ? NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name] : null;
+  const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
+  const displayHz = rawDisplayHz && targetHz
+    ? pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS)
+    : rawDisplayHz;
 
   // Smooth Hz
-  if (hz && ptn_smoothHz) {
-    ptn_smoothHz = 0.25 * hz + 0.75 * ptn_smoothHz;
-  } else if (hz) {
-    ptn_smoothHz = hz;
+  if (displayHz && ptn_smoothHz) {
+    ptn_smoothHz = 0.25 * displayHz + 0.75 * ptn_smoothHz;
+  } else if (displayHz) {
+    ptn_smoothHz = displayHz;
   } else {
     ptn_smoothHz = null;
   }
@@ -173,9 +199,8 @@ function onPitchFrame(hz) {
   // Update pitch line (with arrow if out of range) — color by proximity
   updatePitchLineOrArrow(ptn_smoothHz, ptnGuideColor(ptn_smoothHz));
 
-  if (!hz) {
-    ptnClearHitTimer();
-    ptnMaybeRearm(null);
+  if (!displayHz) {
+    ptnMaybeRearm(pitchFrame, null);
     return;
   }
 
@@ -186,25 +211,18 @@ function onPitchFrame(hz) {
     return;
   }
 
-  if (!ptnMaybeRearm(hz)) {
+  if (!ptnMaybeRearm(pitchFrame, displayHz)) {
     ptnClearHitTimer();
     return;
   }
 
-  const targetHz = NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name];
   if (!targetHz) return;
 
-  const cents = 1200 * Math.log2(hz / targetHz);
+  const scoreHz = pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS);
+  const cents = pitchCents(scoreHz, targetHz);
 
-  if (Math.abs(cents) <= HIT_THRESHOLD_CENTS) {
-    if (!ptn_hitTimer) {
-      ptn_hitTimer = setTimeout(() => {
-        ptn_hitTimer = null;
-        onNoteHit();
-      }, HIT_HOLD_MS);
-    }
-  } else {
-    ptnClearHitTimer();
+  if (ptnRecordHitFrame(Math.abs(cents) <= HIT_THRESHOLD_CENTS)) {
+    onNoteHit();
   }
 }
 
