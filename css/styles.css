@@ -5,10 +5,8 @@
   --text-sm: 12px;
   --text-md: 13px;
   --text-base: 14px;
-  --text-xl: 16px;
   --text-2xl: 18px;
   --text-title: 22px;
-  --text-emoji-lg: 28px;
   --text-complete-emoji: 38px;
   --text-display: 48px;
   --text-recap-score: 96px;
@@ -295,7 +293,7 @@ select optgroup {
 }
 
 .custom-select--game-mode .custom-select__option {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   font-weight: 600;
   padding: 10px 12px;
   border-radius: 12px;
@@ -690,7 +688,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 .game-mode-switcher {
   display: flex; align-items: center; gap: 8px;
 }
-.game-mode-emoji { font-size: var(--text-emoji-lg); line-height: 1; }
+.game-mode-emoji { font-size: var(--text-title); line-height: 1; }
 .game-mode-select {
   font-family: inherit; font-size: var(--text-2xl); font-weight: 600;
   color: var(--text); background: transparent; border: none;
@@ -840,7 +838,7 @@ details[open] summary::after { content: '▾'; }
   display: flex; flex-direction: column; gap: 3px; min-width: 0;
 }
 .pa-title {
-  font-size: var(--text-xl); font-weight: 600; color: var(--text);
+  font-size: var(--text-2xl); font-weight: 600; color: var(--text);
   letter-spacing: var(--tracking-heading);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
