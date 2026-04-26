@@ -136,8 +136,6 @@ const GUITAR_FULL_BASE = [
 ];
 
 const GUITAR_STAFF_BASE = [
-  {name:'A3', step:-4, soundName:'A2'},
-  {name:'B3', step:-3, soundName:'B2'},
   {name:'C4', step:-2, soundName:'C3'},
   {name:'D4', step:-1, soundName:'D3'},
   {name:'E4', step:0,  soundName:'E3'},
@@ -148,6 +146,7 @@ const GUITAR_STAFF_BASE = [
   {name:'C5', step:5,  soundName:'C4'},
   {name:'D5', step:6,  soundName:'D4'},
   {name:'E5', step:7,  soundName:'E4'},
+  {name:'F5', step:8,  soundName:'F4'},
 ];
 
 const DRILL_RANGE_MODES = {
