@@ -15,7 +15,7 @@ const SONGS = {
       credit:       "Traditional — Public Domain",
       guitarOctave: true,
     },
-    xmlPath: 'js/songs/dinks-song.musicxml',
+    xmlPath: '/js/songs/dinks-song.musicxml',
   },
   'going-to-the-west': {
     meta: {
@@ -23,7 +23,7 @@ const SONGS = {
       credit:       "Traditional — Public Domain",
       guitarOctave: true,
     },
-    xmlPath: 'js/songs/going-to-the-west.musicxml',
+    xmlPath: '/js/songs/going-to-the-west.musicxml',
   },
   'i-know-you-rider': {
     meta: {
@@ -31,6 +31,6 @@ const SONGS = {
       credit:       "Traditional — Public Domain",
       guitarOctave: true,
     },
-    xmlPath: 'js/songs/i-know-you-rider.musicxml',
+    xmlPath: '/js/songs/i-know-you-rider.musicxml',
   },
 };
