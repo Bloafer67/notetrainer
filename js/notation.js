@@ -61,9 +61,7 @@ function notationBuildMusicXml(notes, opts = {}) {
   const padBeats = Math.max(0, Math.round(Number.isFinite(opts.padBeats) ? opts.padBeats : 2));
 
   const noteXml = notes.map(note => {
-    const pitchName = clef === 'guitar' && note.actualName
-      ? note.actualName
-      : note.name;
+    const pitchName = note.actualName || note.name;
     const parsed = notationParseNoteName(pitchName);
     if (!parsed) return '';
     const alterXml = parsed.alter ? `<alter>${parsed.alter}</alter>` : '';
