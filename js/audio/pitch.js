@@ -127,7 +127,7 @@ function detectPitchVerbose(buf, sampleRate) {
       for (let j = lo; j <= hi; j++) {
         if (corr[j] > cand) { cand = corr[j]; candPos = j; }
       }
-      if (cand > maxVal * 0.5) {
+      if (cand > maxVal * 0.15) {
         maxPos = candPos;
         octaveCorrected = true;
       }
