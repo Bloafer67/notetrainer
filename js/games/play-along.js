@@ -519,12 +519,11 @@ function pa_onPitchFrame(frame) {
     return;
   }
 
-  const displayHz = pitchHzForTarget(pitchFrame, targetHz, PA_HIT_CENTS);
-  if (displayHz && pa_smoothHz) {
-    pa_smoothHz = 0.25 * displayHz + 0.75 * pa_smoothHz;
-  } else {
-    pa_smoothHz = displayHz || null;
-  }
+  const displayHz = pitchHzNearReference(
+    pitchHzForTarget(pitchFrame, targetHz, PA_HIT_CENTS),
+    pa_smoothHz || targetHz
+  );
+  pa_smoothHz = pitchSmoothHz(pa_smoothHz, displayHz);
 
   if (!pa_hitArmed && pitchFrame.onset) pa_hitArmed = true;
 
