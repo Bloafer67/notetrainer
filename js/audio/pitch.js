@@ -13,7 +13,8 @@ let smoothPitchRms = 0;
 
 const PITCH_MIN_HZ = 50;
 const PITCH_MAX_HZ = 1500;
-const PITCH_MIN_RMS = 0.006;
+const PITCH_MIN_RMS = 0.0015;
+const PITCH_ONSET_MIN_RMS = 0.006;
 const PITCH_MIN_CLARITY = 0.72;
 const PITCH_DISPLAY_MIN_CLARITY = 0.52;
 const PITCH_YIN_THRESHOLD = 0.12;
@@ -26,7 +27,7 @@ async function startPitchDetection(onUpdate) {
       audio: {
         echoCancellation: false,
         noiseSuppression: false,
-        autoGainControl: false,
+        autoGainControl: true,
         channelCount: 1,
       },
       video: false,
@@ -217,8 +218,8 @@ function detectPitchOnset(rms) {
   smoothPitchRms = smoothPitchRms ? 0.85 * smoothPitchRms + 0.15 * rms : rms;
   lastPitchRms = rms;
 
-  if (rms < PITCH_MIN_RMS * 1.5) return false;
-  if (prevRms < PITCH_MIN_RMS && rms >= PITCH_MIN_RMS * 2) return true;
+  if (rms < PITCH_ONSET_MIN_RMS * 1.5) return false;
+  if (prevRms < PITCH_ONSET_MIN_RMS && rms >= PITCH_ONSET_MIN_RMS * 2) return true;
   return rms > smoothPitchRms * 1.65 && rms - prevRms > 0.01;
 }
 
