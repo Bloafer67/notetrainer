@@ -187,29 +187,23 @@ const GAME_MODE_CONFIG = {
   'intervals':      { emoji: '🎧', pregameId: 'pregame-intervals' },
 };
 
-// Apply a view to the DOM. Called by the router on initial load + popstate,
-// and by user-driven navigation (onGameModeChange / navigate / navigateToGame).
-// Never touches history — that's the router's job.
-function applyView(view, params) {
-  if (view === 'leaderboard') {
-    window.setLbSelectionFromParams?.(params || {});
-    switchTab('leaderboard');
-    return;
-  }
-  if (!window.router?.isGameMode(view)) return;
+// Apply a route to the DOM. Called by the router on initial load + popstate,
+// and by user-driven navigation. Never touches history — router's job.
+function applyRoute({ game, subview, params }) {
+  if (!window.router?.isGameMode(game)) game = window.router?.DEFAULT_GAME || 'name-the-notes';
 
-  gameMode = view;
-  const cfg = GAME_MODE_CONFIG[view];
+  gameMode = game;
+  const cfg = GAME_MODE_CONFIG[game];
 
   const select = document.getElementById('game-mode-select');
-  if (select && select.value !== view) {
-    select.value = view;
+  if (select && select.value !== game) {
+    select.value = game;
     window.refreshCustomSelect?.(select);
   }
   document.getElementById('game-mode-emoji').textContent = cfg.emoji;
 
   // Default to Guitar (8vb) for pitch-based modes
-  if (view === 'play-the-notes' || view === 'play-along' || view === 'bursts') {
+  if (game === 'play-the-notes' || game === 'play-along' || game === 'bursts') {
     const clefSelect = document.getElementById('clef-select');
     if (clefSelect) {
       clefSelect.value = 'guitar';
@@ -218,25 +212,43 @@ function applyView(view, params) {
     clef = 'guitar';
   }
 
-  switchTab('game');
-  showPregame();
+  if (subview === 'leaderboard') {
+    window.setLbSelection?.(game, params || {});
+    switchTab('leaderboard');
+  } else {
+    switchTab('game');
+    showPregame();
+  }
 }
 
+// User picks a game from the top dropdown. Preserve subview so switching
+// games while browsing leaderboards stays in the leaderboard view.
 function onGameModeChange() {
   const select = document.getElementById('game-mode-select');
-  applyView(select.value);
-  window.router.pushView(select.value);
+  const path = window.router.parsePath(window.location.pathname);
+  const subview = path.subview;
+  applyRoute({ game: select.value, subview, params: {} });
+  window.router.pushRoute(select.value, subview, {});
 }
 
-// User-initiated navigation: apply view + push URL.
-function navigate(view) {
-  applyView(view);
-  window.router.pushView(view);
-}
-
-// Tab handler — Game tab returns user to the current game mode's URL.
+// Navigate to a game's pregame.
 function navigateToGame() {
-  navigate(gameMode);
+  applyRoute({ game: gameMode, subview: null, params: {} });
+  window.router.pushRoute(gameMode, null, {});
+}
+
+// Navigate to a game's leaderboard. If params omitted and we're already on
+// this game's leaderboard, preserve the current per-board query so a tab
+// re-click is a no-op rather than a board reset.
+function navigateToLeaderboard(game = gameMode, params) {
+  if (params === undefined) {
+    const path = window.router.parsePath(window.location.pathname);
+    params = (path.game === game && path.subview === 'leaderboard')
+      ? window.router.paramsFromSearch(window.location.search)
+      : {};
+  }
+  applyRoute({ game, subview: 'leaderboard', params });
+  window.router.pushRoute(game, 'leaderboard', params);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────
@@ -362,9 +374,9 @@ function initApp() {
   setTimerIcon('play');
   setTimerDisplay(null);
 
-  // Router owns initial deep-link parsing + popstate. applyView handles the DOM.
+  // Router owns initial deep-link parsing + popstate. applyRoute handles the DOM.
   window.router.init({
-    onRoute: (view, { params }) => applyView(view, params),
+    onRoute: route => applyRoute(route),
   });
 
   fetchLeaderboard();
