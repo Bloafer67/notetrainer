@@ -7,8 +7,8 @@ const BURSTS_HIT_CENTS = 80;
 const BURSTS_REARM_CENTS      = 140;
 const BURSTS_REARM_SILENCE_MS = 120;
 const BURSTS_HIT_WINDOW_SIZE  = 5;
-const BURSTS_HIT_REQUIRED_FRAMES = 3;
-const BURSTS_HIT_WINDOW_MAX_MS = 180;
+const BURSTS_HIT_REQUIRED_FRAMES = 2;
+const BURSTS_HIT_WINDOW_MAX_MS = 240;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let bursts_active   = false;
@@ -228,7 +228,7 @@ function onBurstsPitchFrame(frame) {
   }
 
   if (!targetHz) return;
-  const scoreHz = pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS);
+  const scoreHz = bursts_smoothHz || pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS);
   const cents = pitchCents(scoreHz, targetHz);
 
   if (burstsRecordHitFrame(Math.abs(cents) <= BURSTS_HIT_CENTS)) {
@@ -271,6 +271,7 @@ function onBurstsNoteHit() {
   } else {
     // Advance to the next note in the burst
     current = bursts_notes[bursts_index];
+    bursts_smoothHz = null;
     burstsRenderCurrent();
   }
 }

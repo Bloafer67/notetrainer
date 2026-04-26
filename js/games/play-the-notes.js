@@ -7,8 +7,8 @@ const HIT_THRESHOLD_CENTS   = 80;  // more forgiving — was 50
 const HIT_REARM_CENTS       = 140;
 const HIT_REARM_SILENCE_MS  = 120;
 const HIT_WINDOW_SIZE       = 5;
-const HIT_REQUIRED_FRAMES   = 3;
-const HIT_WINDOW_MAX_MS     = 180;
+const HIT_REQUIRED_FRAMES   = 2;
+const HIT_WINDOW_MAX_MS     = 240;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let ptn_active    = false;
@@ -218,7 +218,7 @@ function onPitchFrame(frame) {
 
   if (!targetHz) return;
 
-  const scoreHz = pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS);
+  const scoreHz = ptn_smoothHz || pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS);
   const cents = pitchCents(scoreHz, targetHz);
 
   if (ptnRecordHitFrame(Math.abs(cents) <= HIT_THRESHOLD_CENTS)) {
