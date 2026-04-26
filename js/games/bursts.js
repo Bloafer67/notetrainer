@@ -197,10 +197,16 @@ function onBurstsPitchFrame(frame) {
   const targetHz = target ? NOTE_FREQS[target.actualName] || NOTE_FREQS[target.name] : null;
   const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
   const displayHz = rawDisplayHz && targetHz
-    ? pitchHzNearReference(pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS), bursts_smoothHz || targetHz)
+    ? pitchHzForTarget(pitchFrame, targetHz, BURSTS_HIT_CENTS)
     : rawDisplayHz;
 
-  bursts_smoothHz = pitchSmoothHz(bursts_smoothHz, displayHz);
+  if (displayHz && bursts_smoothHz) {
+    bursts_smoothHz = 0.25 * displayHz + 0.75 * bursts_smoothHz;
+  } else if (displayHz) {
+    bursts_smoothHz = displayHz;
+  } else {
+    bursts_smoothHz = null;
+  }
 
   updatePitchLineOrArrow(bursts_smoothHz, burstsGuideColor(bursts_smoothHz));
 

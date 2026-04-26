@@ -238,37 +238,12 @@ function pitchHzForTarget(frame, targetHz, thresholdCents = 80) {
   const hz = normalized.hz;
   if (!hz || !targetHz) return null;
 
-  const candidates = [hz / 2, hz, hz * 2]
+  const candidates = [hz, hz / 2, hz * 2]
     .filter(candidate => candidate >= PITCH_MIN_HZ && candidate <= PITCH_MAX_HZ)
     .map(candidate => ({ hz: candidate, cents: Math.abs(pitchCents(candidate, targetHz)) }))
     .sort((a, b) => a.cents - b.cents);
 
   return candidates[0]?.cents <= thresholdCents ? candidates[0].hz : hz;
-}
-
-function pitchOctaveCandidates(hz) {
-  if (!hz) return [];
-  return [hz / 2, hz, hz * 2];
-}
-
-function pitchHzNearReference(hz, referenceHz) {
-  if (!hz || !referenceHz) return hz || null;
-  return pitchOctaveCandidates(hz)
-    .filter(candidate => candidate >= PITCH_MIN_HZ && candidate <= PITCH_MAX_HZ)
-    .map(candidate => ({ hz: candidate, cents: Math.abs(pitchCents(candidate, referenceHz)) }))
-    .sort((a, b) => a.cents - b.cents)[0]?.hz || hz;
-}
-
-function pitchSmoothHz(prevHz, nextHz, alpha = 0.18, maxStepCents = 140) {
-  if (!nextHz) return null;
-  if (!prevHz) return nextHz;
-
-  const foldedHz = pitchHzNearReference(nextHz, prevHz);
-  const cents = pitchCents(foldedHz, prevHz);
-  if (!Number.isFinite(cents)) return foldedHz;
-
-  const stepCents = Math.max(-maxStepCents, Math.min(maxStepCents, cents * alpha));
-  return prevHz * Math.pow(2, stepCents / 1200);
 }
 
 function pitchFrameIsUsable(frame) {
