@@ -184,17 +184,11 @@ function onPitchFrame(frame) {
   const targetHz = current ? NOTE_FREQS[current.actualName] || NOTE_FREQS[current.name] : null;
   const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
   const displayHz = rawDisplayHz && targetHz
-    ? pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS)
+    ? pitchHzNearReference(pitchHzForTarget(pitchFrame, targetHz, HIT_THRESHOLD_CENTS), ptn_smoothHz || targetHz)
     : rawDisplayHz;
 
   // Smooth Hz
-  if (displayHz && ptn_smoothHz) {
-    ptn_smoothHz = 0.25 * displayHz + 0.75 * ptn_smoothHz;
-  } else if (displayHz) {
-    ptn_smoothHz = displayHz;
-  } else {
-    ptn_smoothHz = null;
-  }
+  ptn_smoothHz = pitchSmoothHz(ptn_smoothHz, displayHz);
 
   // Update pitch line (with arrow if out of range) — color by proximity
   updatePitchLineOrArrow(ptn_smoothHz, ptnGuideColor(ptn_smoothHz));
