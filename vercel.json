@@ -1,10 +1,14 @@
 {
   "rewrites": [
-    { "source": "/name-the-notes", "destination": "/index.html" },
-    { "source": "/play-the-notes", "destination": "/index.html" },
-    { "source": "/play-along",     "destination": "/index.html" },
-    { "source": "/bursts",         "destination": "/index.html" },
-    { "source": "/intervals",      "destination": "/index.html" },
-    { "source": "/leaderboard",    "destination": "/index.html" }
+    { "source": "/name-the-notes",             "destination": "/index.html" },
+    { "source": "/name-the-notes/leaderboard", "destination": "/index.html" },
+    { "source": "/play-the-notes",             "destination": "/index.html" },
+    { "source": "/play-the-notes/leaderboard", "destination": "/index.html" },
+    { "source": "/play-along",                 "destination": "/index.html" },
+    { "source": "/play-along/leaderboard",     "destination": "/index.html" },
+    { "source": "/bursts",                     "destination": "/index.html" },
+    { "source": "/bursts/leaderboard",         "destination": "/index.html" },
+    { "source": "/intervals",                  "destination": "/index.html" },
+    { "source": "/intervals/leaderboard",      "destination": "/index.html" }
   ]
 }

@@ -106,20 +106,21 @@ function rangeSlugFromLabel(rangeLabel) {
   return rangeLabel === 'Full range' ? 'full-range' : 'staff-only';
 }
 
+// Game now lives in the URL path, not the query string. Encoders/decoders
+// here only handle the per-board specifier.
 function boardSelectionToParams(key) {
   if (!key) return {};
   const parts = key.split('|');
   if (parts[0] === 'play-along') {
-    return { game: 'play-along', song: parts[2] || '' };
+    return { song: parts[2] || '' };
   }
   if (parts[0] === 'intervals') {
-    return { game: 'intervals', set: parts[2] || '', count: parts[3] || '' };
+    return { set: parts[2] || '', count: parts[3] || '' };
   }
   if (parts[0] === 'timed') {
-    const [, game, clefLabel, boardId, duration] = parts;
+    const [, , clefLabel, boardId, duration] = parts;
     const [clefDisplay, rangeLabel] = (clefLabel || '').split(' · ');
     return {
-      game,
       clef: clefSlugFromLabel(clefDisplay),
       range: rangeSlugFromLabel(rangeLabel),
       board: boardId || '',
@@ -129,9 +130,9 @@ function boardSelectionToParams(key) {
   return {};
 }
 
-function paramsToBoardSelection(params) {
-  if (!params || !params.game) return null;
-  const game = params.game;
+function paramsToBoardSelection(game, params) {
+  if (!game) return null;
+  params = params || {};
   if (game === 'play-along') {
     if (!params.song) return null;
     return ['play-along', 'song', params.song].join('|');
@@ -157,11 +158,11 @@ function paramsToBoardSelection(params) {
   return null;
 }
 
-// Called by main.js on view change. Sets lbSelectedKey from URL params if
-// they decode to a valid board; otherwise nulls it out so fetchLeaderboard
-// falls back to the user's currentBoardKey().
-function setLbSelectionFromParams(params) {
-  lbSelectedKey = paramsToBoardSelection(params || {});
+// Called by main.js on route change. Sets lbSelectedKey from path game +
+// query params if they decode to a valid board; otherwise nulls it out so
+// fetchLeaderboard falls back to the user's currentBoardKey().
+function setLbSelection(game, params) {
+  lbSelectedKey = paramsToBoardSelection(game, params || {});
 }
 
 function normalizeAccuracy(value) {
@@ -330,7 +331,9 @@ async function saveToLeaderboard() {
     saveBtn.textContent = 'View →';
     saveBtn.disabled = false;
     saveBtn.onclick = () => {
-      navigate('leaderboard');
+      const savedKey = boardKey(payload);
+      const game = gameFromKey(savedKey) || window.gameMode;
+      navigateToLeaderboard(game, boardSelectionToParams(savedKey));
       fetchLeaderboard();
     };
   } catch (e) {
@@ -393,7 +396,8 @@ function onLbBoardChange() {
   const sel = document.getElementById('lb-board-select');
   if (sel) lbSelectedKey = sel.value;
   renderBoard(lbSelectedKey);
-  window.router?.pushView?.('leaderboard', boardSelectionToParams(lbSelectedKey));
+  const game = gameFromKey(lbSelectedKey) || window.gameMode;
+  window.router?.pushRoute?.(game, 'leaderboard', boardSelectionToParams(lbSelectedKey));
 }
 
 function renderBoard(key) {

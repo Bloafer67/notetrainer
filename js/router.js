@@ -1,34 +1,30 @@
 // ── router.js ─────────────────────────────────────────────────────────────
-// Single source of truth for URL ⇄ view mapping.
-// Other modules go through window.router instead of touching history/location.
+// URL is the source of truth. Path encodes which game and (optional) subview.
+// Query string encodes per-board specifier on /<game>/leaderboard.
 //
-// A "view" is either a game-mode slug ('name-the-notes', 'play-the-notes',
-// 'play-along', 'bursts', 'intervals') or 'leaderboard'.
+//   /                           → default game pregame
+//   /<game>                     → game pregame
+//   /<game>/leaderboard         → that game's leaderboard (default board)
+//   /<game>/leaderboard?board=…&clef=…&duration=…   → specific board
+//
+// game ∈ GAME_MODES. subview ∈ {null, 'leaderboard'}.
 
 (function () {
   const GAME_MODES = ['name-the-notes', 'play-the-notes', 'play-along', 'bursts', 'intervals'];
-  const DEFAULT_VIEW = 'name-the-notes';
+  const SUBVIEWS   = ['leaderboard'];
+  const DEFAULT_GAME = 'name-the-notes';
 
-  const SLUG_BY_VIEW = {
-    'name-the-notes': '/name-the-notes',
-    'play-the-notes': '/play-the-notes',
-    'play-along':     '/play-along',
-    'bursts':         '/bursts',
-    'intervals':      '/intervals',
-    'leaderboard':    '/leaderboard',
-  };
-
-  const VIEW_BY_SLUG = Object.fromEntries(
-    Object.entries(SLUG_BY_VIEW).map(([view, slug]) => [slug, view])
-  );
-  VIEW_BY_SLUG['/'] = DEFAULT_VIEW;
-
-  function viewFromPath(pathname) {
-    return VIEW_BY_SLUG[pathname] || DEFAULT_VIEW;
+  function parsePath(pathname) {
+    const parts = (pathname || '/').split('/').filter(Boolean);
+    const game = GAME_MODES.includes(parts[0]) ? parts[0] : DEFAULT_GAME;
+    const subview = SUBVIEWS.includes(parts[1]) ? parts[1] : null;
+    return { game, subview };
   }
 
-  function isGameMode(view) {
-    return GAME_MODES.includes(view);
+  function buildPath(game, subview) {
+    const g = GAME_MODES.includes(game) ? game : DEFAULT_GAME;
+    const s = SUBVIEWS.includes(subview) ? subview : null;
+    return s ? `/${g}/${s}` : `/${g}`;
   }
 
   function paramsFromSearch(search) {
@@ -50,45 +46,49 @@
     return qs ? '?' + qs : '';
   }
 
-  function pushView(view, params) {
-    const slug = SLUG_BY_VIEW[view] || '/';
-    const target = slug + buildQueryString(params);
+  function pushRoute(game, subview, params) {
+    const target = buildPath(game, subview) + buildQueryString(params);
     const current = window.location.pathname + window.location.search;
     if (current === target) return;
     try {
-      history.pushState({ view, params: params || {} }, '', target);
+      history.pushState({ game, subview, params: params || {} }, '', target);
     } catch (e) {
       // pushState throws on file:// URLs — safe to ignore for local testing
     }
   }
 
+  function isGameMode(view) {
+    return GAME_MODES.includes(view);
+  }
+
   function init({ onRoute }) {
-    const initial = viewFromPath(window.location.pathname);
-    const initialParams = paramsFromSearch(window.location.search);
-    // Replace state so popstate has something to read if user goes back to entry
+    const { game, subview } = parsePath(window.location.pathname);
+    const params = paramsFromSearch(window.location.search);
+    // Canonicalize the URL on first load (e.g. "/" → "/name-the-notes")
+    // so the address bar always matches the active view.
+    const canonical = buildPath(game, subview) + buildQueryString(params);
     try {
-      history.replaceState(
-        { view: initial, params: initialParams },
-        '',
-        window.location.pathname + window.location.search
-      );
+      history.replaceState({ game, subview, params }, '', canonical);
     } catch (e) {}
-    onRoute(initial, { params: initialParams, source: 'initial' });
+    onRoute({ game, subview, params, source: 'initial' });
 
     window.addEventListener('popstate', e => {
-      const view = e.state?.view || viewFromPath(window.location.pathname);
+      const path = parsePath(window.location.pathname);
+      const game = e.state?.game || path.game;
+      const subview = (e.state?.subview !== undefined) ? e.state.subview : path.subview;
       const params = e.state?.params || paramsFromSearch(window.location.search);
-      onRoute(view, { params, source: 'popstate' });
+      onRoute({ game, subview, params, source: 'popstate' });
     });
   }
 
   window.router = {
     init,
-    pushView,
-    viewFromPath,
+    pushRoute,
+    parsePath,
     paramsFromSearch,
     isGameMode,
     GAME_MODES,
-    DEFAULT_VIEW,
+    SUBVIEWS,
+    DEFAULT_GAME,
   };
 })();
