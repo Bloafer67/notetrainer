@@ -4,10 +4,7 @@
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const PA_HIT_CENTS   = 40;
-const PA_WRONG_HOLD_MS = 240;
-const PA_HIT_WINDOW_SIZE = 5;
-const PA_HIT_REQUIRED_FRAMES = 3;
-const PA_HIT_WINDOW_MAX_MS = 180;
+const PA_HIT_HOLD_MS = 240;
 
 // ── State ─────────────────────────────────────────────────────────────────
 let pa_active        = false;
@@ -19,7 +16,6 @@ let pa_wrongTimer    = null;
 let pa_wrongArmed    = true;
 let pa_hitArmed      = true;
 let pa_smoothHz      = null;
-let pa_hitFrames     = [];
 let pa_correctNotes  = 0;
 let pa_wrongAttempts = 0;
 let pa_elapsedMs     = 0;
@@ -75,16 +71,6 @@ function paClearHitTimer() {
     clearTimeout(pa_hitTimer);
     pa_hitTimer = null;
   }
-  pa_hitFrames = [];
-}
-
-function paRecordHitFrame(inRange) {
-  const now = performance.now();
-  pa_hitFrames.push({ inRange, at: now });
-  pa_hitFrames = pa_hitFrames
-    .filter(frame => now - frame.at <= PA_HIT_WINDOW_MAX_MS)
-    .slice(-PA_HIT_WINDOW_SIZE);
-  return pa_hitFrames.filter(frame => frame.inRange).length >= PA_HIT_REQUIRED_FRAMES;
 }
 
 function paClearWrongTimer(resetArmed = false) {
@@ -103,7 +89,6 @@ function paResetRoundState() {
   pa_startedAt = performance.now();
   pa_wrongArmed = true;
   pa_hitArmed = true;
-  pa_hitFrames = [];
   paClearHitTimer();
   paClearWrongTimer();
   clearInterval(pa_timerInterval);
@@ -374,7 +359,6 @@ function pa_currentTargetHz() {
     hz = NOTE_FREQS[`${base}${acc}${pitch.Octave}`];
   }
 
-  if (hz && pa_song?.meta?.guitarOctave) hz /= 2;
   return hz || null;
 }
 
@@ -500,14 +484,18 @@ function pa_countWrongAttempt() {
 }
 
 // ── Pitch callback ────────────────────────────────────────────────────────
-function pa_onPitchFrame(frame) {
+function pa_onPitchFrame(hz) {
   if (!pa_active) return;
-  const pitchFrame = normalizePitchFrame(frame);
-  const rawDisplayHz = pitchFrameIsUsable(pitchFrame) ? pitchFrame.hz : null;
 
-  if (!rawDisplayHz || pa_cursorEnded()) {
-    pa_smoothHz = null;
+  if (hz && pa_smoothHz) {
+    pa_smoothHz = 0.25 * hz + 0.75 * pa_smoothHz;
+  } else {
+    pa_smoothHz = hz || null;
+  }
+
+  if (!hz || pa_cursorEnded()) {
     pa_updatePitchOverlay(null, false);
+    paClearHitTimer();
     paClearWrongTimer(true);
     pa_hitArmed = true;
     return;
@@ -519,24 +507,18 @@ function pa_onPitchFrame(frame) {
     return;
   }
 
-  const displayHz = pitchHzNearReference(
-    pitchHzForTarget(pitchFrame, targetHz, PA_HIT_CENTS),
-    pa_smoothHz || targetHz
-  );
-  pa_smoothHz = pitchSmoothHz(pa_smoothHz, displayHz);
-
-  if (!pa_hitArmed && pitchFrame.onset) pa_hitArmed = true;
-
-  const scoreHz = displayHz;
-  const cents = Math.abs(pitchCents(scoreHz, targetHz));
+  const cents = Math.abs(1200 * Math.log2(hz / targetHz));
   const inRange = cents <= PA_HIT_CENTS;
 
   pa_updatePitchOverlay(pa_smoothHz, inRange);
 
   if (inRange) {
     paClearWrongTimer(true);
-    if (pa_hitArmed && paRecordHitFrame(true)) {
-      pa_onNoteHit();
+    if (pa_hitArmed && !pa_hitTimer) {
+      pa_hitTimer = setTimeout(() => {
+        pa_hitTimer = null;
+        pa_onNoteHit();
+      }, PA_HIT_HOLD_MS);
     }
     return;
   }
@@ -548,7 +530,7 @@ function pa_onPitchFrame(frame) {
       pa_wrongTimer = null;
       if (!pa_active) return;
       pa_countWrongAttempt();
-    }, PA_WRONG_HOLD_MS);
+    }, PA_HIT_HOLD_MS);
   }
 }
 
