@@ -134,6 +134,7 @@
         clarity: +d.clarity.toFixed(3),
         refinedPos: +d.refinedPos.toFixed(2),
         reason: d.reason,
+        octaveCorrected: !!d.octaveCorrected,
         midi: n.midi,
         note: n.note,
         cents: n.cents,
@@ -181,7 +182,8 @@
         return `<div class="dbg-log-row ${reasonClass}">${String(e.t).padStart(6)}ms  hz=—       rms=${e.rms.toFixed(4)}  cl=${e.clarity.toFixed(2)}  ${e.reason}${exp}</div>`;
       }
       const cents = e.cents >= 0 ? `+${e.cents}` : `${e.cents}`;
-      return `<div class="dbg-log-row ${reasonClass}">${String(e.t).padStart(6)}ms  hz=${e.hz.toFixed(1).padStart(7)}  ${e.note.padEnd(4)} ${cents.padStart(4)}¢  rms=${e.rms.toFixed(4)}  cl=${e.clarity.toFixed(2)}${exp}</div>`;
+      const oc = e.octaveCorrected ? ' ★oct' : '';
+      return `<div class="dbg-log-row ${reasonClass}">${String(e.t).padStart(6)}ms  hz=${e.hz.toFixed(1).padStart(7)}  ${e.note.padEnd(4)} ${cents.padStart(4)}¢  rms=${e.rms.toFixed(4)}  cl=${e.clarity.toFixed(2)}${oc}${exp}</div>`;
     });
     els.log.innerHTML = lines.join('');
     els.log.scrollTop = els.log.scrollHeight;

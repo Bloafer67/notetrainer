@@ -15,9 +15,14 @@ const PITCH_CLARITY_GATE = 0.6;
 const PITCH_HZ_MIN       = 60;
 const PITCH_HZ_MAX       = 1500;
 
+// Last accepted period (in samples) — anchors the temporal octave correction
+// across frames within a single sustained note. Reset on silence.
+let lastValidPos = null;
+
 // ── Start mic + detection ─────────────────────────────────────────────────
 async function startPitchDetection(onUpdate) {
   onPitchUpdate = onUpdate;
+  lastValidPos = null;
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
@@ -76,7 +81,10 @@ function detectPitchVerbose(buf, sampleRate) {
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < PITCH_RMS_GATE) return { hz: null, rms, clarity: 0, refinedPos: 0, reason: 'rms' };
+  if (rms < PITCH_RMS_GATE) {
+    lastValidPos = null;
+    return { hz: null, rms, clarity: 0, refinedPos: 0, reason: 'rms' };
+  }
 
   const corr = new Float32Array(SIZE);
   for (let lag = 0; lag < SIZE; lag++) {
@@ -102,6 +110,30 @@ function detectPitchVerbose(buf, sampleRate) {
   if (clarity < PITCH_CLARITY_GATE) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'clarity' };
   if (maxPos < 2) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'no-peak' };
 
+  // Temporal octave correction. On a plucked string, the 2nd harmonic can
+  // outlast the fundamental during decay, flipping corr[T/2] above corr[T].
+  // Gated on low RMS so a fresh, loud attack at a different octave wins the
+  // moment regardless of what we tracked before.
+  const DECAY_RMS_MAX = 0.025;
+  let octaveCorrected = false;
+  if (lastValidPos !== null && rms < DECAY_RMS_MAX) {
+    const ratio = lastValidPos / maxPos;
+    if (ratio > 1.7 && ratio < 2.3) {
+      const target = Math.round(lastValidPos);
+      const w = Math.max(2, Math.round(maxPos * 0.06));
+      const lo = Math.max(d, target - w);
+      const hi = Math.min(SIZE - 2, target + w);
+      let cand = -Infinity, candPos = target;
+      for (let j = lo; j <= hi; j++) {
+        if (corr[j] > cand) { cand = corr[j]; candPos = j; }
+      }
+      if (cand > maxVal * 0.5) {
+        maxPos = candPos;
+        octaveCorrected = true;
+      }
+    }
+  }
+
   const y1 = corr[maxPos - 1] ?? 0;
   const y2 = corr[maxPos];
   const y3 = corr[maxPos + 1] ?? 0;
@@ -112,7 +144,8 @@ function detectPitchVerbose(buf, sampleRate) {
   if (hz < PITCH_HZ_MIN || hz > PITCH_HZ_MAX) {
     return { hz: null, rms, clarity, refinedPos, reason: 'out-of-range' };
   }
-  return { hz, rms, clarity, refinedPos, reason: 'ok' };
+  lastValidPos = maxPos;
+  return { hz, rms, clarity, refinedPos, reason: 'ok', octaveCorrected };
 }
 
 // Debug hook — receives the full diagnostic object on every frame. Pass null
