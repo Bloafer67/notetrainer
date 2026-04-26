@@ -25,4 +25,12 @@ const SONGS = {
     },
     xmlPath: 'js/songs/going-to-the-west.musicxml',
   },
+  'i-know-you-rider': {
+    meta: {
+      title:        "I Know You Rider",
+      credit:       "Traditional — Public Domain",
+      guitarOctave: true,
+    },
+    xmlPath: 'js/songs/i-know-you-rider.musicxml',
+  },
 };
