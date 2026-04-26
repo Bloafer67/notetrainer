@@ -903,31 +903,48 @@ details[open] summary::after { content: '▾'; }
 #iv-pregame-selectors {
   display: none;
 }
-.iv-presets {
-  display: flex; gap: 8px; flex-wrap: wrap;
+.iv-tray {
+  margin-top: 0;
+  background: var(--surface);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
 }
-.iv-preset-btn {
+.iv-tray > summary {
+  padding: 10px 16px; font-size: 13px; color: var(--text); font-weight: 500;
+}
+.iv-tray > summary::after { color: var(--text2); }
+.iv-tray-label { font-weight: 600; }
+.iv-tray-state {
+  margin-left: auto; margin-right: 10px;
+  font-size: 12px; font-weight: 500; color: var(--text2);
+}
+.iv-tray-body {
+  padding: 10px 12px 12px;
+  border-top: 0.5px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.iv-quick-picks {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.iv-quick-btn {
   flex: 1; min-width: 0;
-  padding: 8px 10px; border-radius: 12px;
-  background: var(--surface); border: 0.5px solid var(--border2);
-  color: var(--text); font-family: inherit; font-size: 12px; font-weight: 500;
+  padding: 6px 8px; border-radius: 10px;
+  background: var(--bg); border: 0.5px solid var(--border2);
+  color: var(--text2); font-family: inherit; font-size: 12px; font-weight: 500;
   cursor: pointer; white-space: nowrap;
-  transition: filter 0.1s, background 0.1s, color 0.1s, border-color 0.1s;
+  transition: filter 0.1s, color 0.1s, border-color 0.1s;
 }
-.iv-preset-btn:hover { filter: brightness(1.05); }
-.iv-preset-btn.active {
-  background: var(--primary); border-color: var(--primary);
-  color: var(--on-primary);
-}
+.iv-quick-btn:hover { color: var(--text); border-color: var(--primary); }
 .iv-checklist {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
 }
+.iv-direction-list { grid-template-columns: repeat(3, 1fr); }
 .iv-check {
   display: flex; align-items: center; gap: 6px;
-  padding: 8px 10px; border-radius: 12px;
-  background: var(--surface); border: 0.5px solid var(--border2);
+  padding: 8px 10px; border-radius: 10px;
+  background: var(--bg); border: 0.5px solid var(--border2);
   cursor: pointer; user-select: none;
-  font-size: 13px; font-weight: 500; color: var(--text);
+  font-size: 12px; font-weight: 500; color: var(--text);
 }
 .iv-check input[type="checkbox"] {
   margin: 0; accent-color: var(--primary); cursor: pointer;
@@ -989,22 +1006,17 @@ details[open] summary::after { content: '▾'; }
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 }
 .iv-choice-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 12px 8px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 14px 10px; border-radius: 12px;
   background: var(--primary); color: var(--on-primary);
   border: 1px solid transparent;
-  font-family: inherit; cursor: pointer;
+  font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.1;
+  text-align: center; cursor: pointer;
   transition: filter 0.1s, transform 0.08s;
 }
 .iv-choice-btn:hover:not(:disabled) { filter: brightness(1.08); }
 .iv-choice-btn:active:not(:disabled) { transform: scale(0.96); }
 .iv-choice-btn:disabled { cursor: default; filter: none; opacity: 0.85; }
-.iv-choice-short {
-  font-size: 18px; font-weight: 700; line-height: 1;
-}
-.iv-choice-label {
-  font-size: 11px; font-weight: 500; opacity: 0.85;
-}
 .iv-choice-btn.correct {
   background: var(--correct-border); color: var(--on-primary);
 }
@@ -1055,7 +1067,8 @@ details[open] summary::after { content: '▾'; }
 }
 .iv-complete-buttons .pregame-play-btn { flex: 1; }
 @media (max-width: 520px) {
-  .iv-checklist { grid-template-columns: repeat(3, 1fr); }
+  .iv-checklist { grid-template-columns: repeat(2, 1fr); }
+  .iv-direction-list { grid-template-columns: repeat(3, 1fr); }
   .iv-choices   { grid-template-columns: repeat(2, 1fr); }
   .iv-complete-metrics, .iv-complete-buttons { flex-direction: column; }
 }
