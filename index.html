@@ -42,10 +42,10 @@
 
 <div class="container">
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('game')">
+    <button class="tab-btn active" onclick="navigateToGame()">
       <svg class="tab-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Game
     </button>
-    <button class="tab-btn" onclick="switchTab('leaderboard')">
+    <button class="tab-btn" onclick="navigate('leaderboard')">
       <svg class="tab-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Leaderboard
     </button>
   </div>
@@ -489,7 +489,8 @@
   7. play-the-notes.js — game logic — needs pitch.js + staff.js
   8. songs/registry.js — song data (SONGS object)
   9. play-along.js — scrolling staff game
-  10. main.js     — theme, tabs, init — needs everything above
+  10. router.js   — URL ⇄ view mapping; window.router used by main.js init
+  11. main.js     — theme, tabs, init — needs everything above
 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.3/build/opensheetmusicdisplay.min.js"></script>
@@ -505,6 +506,7 @@
 <script src="js/games/bursts.js"></script>
 <script src="js/games/intervals.js"></script>
 <script src="js/custom-selects.js"></script>
+<script src="js/router.js"></script>
 <script src="js/main.js"></script>
 
 <script>

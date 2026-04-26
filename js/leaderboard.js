@@ -244,7 +244,7 @@ async function saveToLeaderboard() {
     saveBtn.textContent = 'View →';
     saveBtn.disabled = false;
     saveBtn.onclick = () => {
-      switchTab('leaderboard');
+      navigate('leaderboard');
       fetchLeaderboard();
     };
   } catch (e) {

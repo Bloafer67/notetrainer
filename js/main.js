@@ -176,7 +176,7 @@ function switchTab(name) {
 }
 
 // ── Game mode ─────────────────────────────────────────────────────────────
-// 'name-the-notes' | 'play-the-notes' | 'play-along'
+// 'name-the-notes' | 'play-the-notes' | 'play-along' | 'bursts' | 'intervals'
 let gameMode = 'name-the-notes';
 
 const GAME_MODE_CONFIG = {
@@ -187,52 +187,55 @@ const GAME_MODE_CONFIG = {
   'intervals':      { emoji: '🎧', pregameId: 'pregame-intervals' },
 };
 
-function onGameModeChange() {
-  const select = document.getElementById('game-mode-select');
-  gameMode = select.value;
-  const cfg = GAME_MODE_CONFIG[gameMode];
+// Apply a view to the DOM. Called by the router on initial load + popstate,
+// and by user-driven navigation (onGameModeChange / navigate / navigateToGame).
+// Never touches history — that's the router's job.
+function applyView(view) {
+  if (view === 'leaderboard') {
+    switchTab('leaderboard');
+    return;
+  }
+  if (!window.router?.isGameMode(view)) return;
 
-  // Swap emoji
+  gameMode = view;
+  const cfg = GAME_MODE_CONFIG[view];
+
+  const select = document.getElementById('game-mode-select');
+  if (select && select.value !== view) {
+    select.value = view;
+    window.refreshCustomSelect?.(select);
+  }
   document.getElementById('game-mode-emoji').textContent = cfg.emoji;
 
   // Default to Guitar (8vb) for pitch-based modes
-  if (gameMode === 'play-the-notes' || gameMode === 'play-along' || gameMode === 'bursts') {
-    document.getElementById('clef-select').value = 'guitar';
-    window.refreshCustomSelect?.(document.getElementById('clef-select'));
+  if (view === 'play-the-notes' || view === 'play-along' || view === 'bursts') {
+    const clefSelect = document.getElementById('clef-select');
+    if (clefSelect) {
+      clefSelect.value = 'guitar';
+      window.refreshCustomSelect?.(clefSelect);
+    }
     clef = 'guitar';
   }
 
-  // Show/hide the standard key/clef/duration selectors
-  const stdSelectors = document.getElementById('pregame-selectors-wrap');
-  const paSelectors  = document.getElementById('pa-pregame-selectors');
-  const ivSelectors  = document.getElementById('iv-pregame-selectors');
-  if (stdSelectors) stdSelectors.style.display = (gameMode === 'play-along' || gameMode === 'intervals') ? 'none' : '';
-  if (paSelectors)  paSelectors.style.display  = gameMode === 'play-along' ? 'flex' : 'none';
-  if (ivSelectors)  ivSelectors.style.display  = gameMode === 'intervals'  ? 'flex' : 'none';
-  window.syncDrillPracticeControls?.();
-
-  // Swap pregame description
-  Object.values(GAME_MODE_CONFIG).forEach(c => {
-    document.getElementById(c.pregameId).style.display = 'none';
-  });
-  document.getElementById(cfg.pregameId).style.display = '';
-
-  // Update URL
-  const slugMap = {
-    'name-the-notes': '/name-the-notes',
-    'play-the-notes': '/play-the-notes',
-    'play-along':     '/play-along',
-    'bursts':         '/bursts',
-    'intervals':      '/intervals',
-  };
   switchTab('game');
   showPregame();
+}
 
-  try {
-    history.pushState({ gameMode }, '', slugMap[gameMode] || '/');
-  } catch (e) {
-    // pushState can throw on file:// URLs — safe to ignore for local testing
-  }
+function onGameModeChange() {
+  const select = document.getElementById('game-mode-select');
+  applyView(select.value);
+  window.router.pushView(select.value);
+}
+
+// User-initiated navigation: apply view + push URL.
+function navigate(view) {
+  applyView(view);
+  window.router.pushView(view);
+}
+
+// Tab handler — Game tab returns user to the current game mode's URL.
+function navigateToGame() {
+  navigate(gameMode);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────
@@ -354,49 +357,12 @@ function initApp() {
   window.syncDrillPracticeControls?.();
   window.gameDuration = parseInt(document.getElementById('duration-select').value);
 
-  // URL-based routing — /play-the-notes loads that game mode
-  const path = window.location.pathname;
-  if (path === '/play-the-notes') {
-    gameMode = 'play-the-notes';
-    document.getElementById('game-mode-select').value = 'play-the-notes';
-    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
-    document.getElementById('game-mode-emoji').textContent = '🎸';
-    document.getElementById('clef-select').value = 'guitar';
-    window.refreshCustomSelect?.(document.getElementById('clef-select'));
-    clef = 'guitar';
-  } else if (path === '/bursts') {
-    gameMode = 'bursts';
-    document.getElementById('game-mode-select').value = 'bursts';
-    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
-    document.getElementById('game-mode-emoji').textContent = '💥';
-    document.getElementById('clef-select').value = 'guitar';
-    window.refreshCustomSelect?.(document.getElementById('clef-select'));
-    clef = 'guitar';
-  } else if (path === '/intervals') {
-    gameMode = 'intervals';
-    document.getElementById('game-mode-select').value = 'intervals';
-    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
-    document.getElementById('game-mode-emoji').textContent = '🎧';
-  }
-
-  // Handle browser back/forward
-  window.addEventListener('popstate', e => {
-    const mode = e.state?.gameMode || 'name-the-notes';
-    gameMode = mode;
-    document.getElementById('game-mode-select').value = mode;
-    window.refreshCustomSelect?.(document.getElementById('game-mode-select'));
-    document.getElementById('game-mode-emoji').textContent = GAME_MODE_CONFIG[mode].emoji;
-    if (mode === 'play-the-notes' || mode === 'bursts') {
-      document.getElementById('clef-select').value = 'guitar';
-      window.refreshCustomSelect?.(document.getElementById('clef-select'));
-      clef = 'guitar';
-    }
-    showPregame();
-  });
-
   loadBest();
   setTimerIcon('play');
   setTimerDisplay(null);
-  showPregame();
+
+  // Router owns initial deep-link parsing + popstate. applyView handles the DOM.
+  window.router.init({ onRoute: applyView });
+
   fetchLeaderboard();
 }
