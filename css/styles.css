@@ -2,21 +2,18 @@
 :root {
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   --text-2xs: 10px;
-  --text-xs: 11px;
   --text-sm: 12px;
   --text-md: 13px;
   --text-base: 14px;
-  --text-lg: 15px;
   --text-xl: 16px;
   --text-2xl: 18px;
   --text-title: 22px;
-  --text-metric-lg: 24px;
   --text-emoji-lg: 28px;
   --text-complete-emoji: 38px;
-  --text-score: 48px;
-  --text-hero: 52px;
+  --text-display: 48px;
   --text-recap-score: 96px;
   --tracking-heading: -0.02em;
+  --tracking-display: -0.02em;
   --tracking-ui: 0.01em;
   --tracking-label: 0.03em;
   --bg:        #fafafb;
@@ -340,7 +337,7 @@ a:hover {
 }
 
 .pregame-copy {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   color: var(--text2);
   margin-top: 10px;
   line-height: 1.5;
@@ -462,7 +459,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 /* ── Score row ────────────────────────────────────────────────────────── */
 .score-row { display: flex; align-items: center; gap: 0; padding: 0 4px; }
 .score-hero-wrap { display: flex; flex-direction: column; gap: 2px; padding-right: 16px; }
-.score-hero { font-size: var(--text-score); font-weight: 700; color: var(--text); line-height: 1; }
+.score-hero { font-size: var(--text-display); font-weight: 700; color: var(--text); line-height: 1; letter-spacing: var(--tracking-display); }
 .score-hero-label { font-size: var(--text-2xs); color: var(--text3); letter-spacing: 0.05em; }
 .score-divider { width: 0.5px; background: var(--border); align-self: stretch; margin: 4px 16px; }
 .score-pair { display: flex; flex-direction: column; gap: 6px; flex: 1; }
@@ -515,7 +512,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 #pa-pregame-selectors {
   display: none;
 }
-.pregame-heading { font-size: var(--text-hero); font-weight: 600; color: var(--text); letter-spacing: var(--tracking-heading); line-height: 1; text-align: center; }
+.pregame-heading { font-size: var(--text-display); font-weight: 600; color: var(--text); letter-spacing: var(--tracking-heading); line-height: 1; text-align: center; }
 .pregame-selectors { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .pregame-selectors-row { display: flex; gap: 8px; align-items: center; }
 .pregame-select {
@@ -529,7 +526,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 .info-nub {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 999px;
-  border: 0.5px solid var(--border2); font-size: var(--text-xs); color: var(--text3);
+  border: 0.5px solid var(--border2); font-size: var(--text-sm); color: var(--text3);
   cursor: pointer; position: relative; flex-shrink: 0;
 }
 .info-nub:hover .info-tooltip { display: block; }
@@ -537,7 +534,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
   display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
   transform: translateX(-50%); width: 220px;
   background: var(--surface); border: 0.5px solid var(--border);
-  border-radius: 12px; padding: 8px 10px; font-size: var(--text-xs);
+  border-radius: 12px; padding: 8px 10px; font-size: var(--text-sm);
   color: var(--text2); line-height: 1.5; z-index: 50;
   pointer-events: none; text-align: left;
 }
@@ -556,14 +553,14 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
   background: var(--overlay-scrim); border-radius: 12px; cursor: pointer;
 }
 .pause-overlay.show { display: flex; }
-.pause-label { font-size: var(--text-lg); font-weight: 500; color: var(--text2); }
+.pause-label { font-size: var(--text-base); font-weight: 500; color: var(--text2); }
 
 /* ── Note buttons ─────────────────────────────────────────────────────── */
 .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .choice-btn {
   background: var(--choice-btn-bg, var(--primary));
   border: 1px solid var(--choice-btn-border, transparent); border-radius: 12px;
-  padding: 14px 4px; font-size: var(--text-lg); font-weight: 600;
+  padding: 14px 4px; font-size: var(--text-base); font-weight: 600;
   cursor: pointer; font-family: inherit; color: var(--choice-btn-text, var(--on-primary));
   transition: filter 0.1s, transform 0.08s;
 }
@@ -612,8 +609,8 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 }
 #recap-view.show { display: flex; }
 #recap-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-.recap-big-score { font-size: var(--text-recap-score); font-weight: 700; color: var(--text); line-height: 1; }
-.recap-sub-line { font-size: var(--text-lg); font-weight: 700; color: var(--text); margin-top: 4px; }
+.recap-big-score { font-size: var(--text-recap-score); font-weight: 700; color: var(--text); line-height: 1; letter-spacing: var(--tracking-display); }
+.recap-sub-line { font-size: var(--text-base); font-weight: 700; color: var(--text); margin-top: 4px; }
 .recap-streak-line { font-size: var(--text-md); color: var(--text3); margin-top: 6px; font-weight: 400; }
 .recap-new-best-badge { font-size: var(--text-md); color: var(--amber-text); font-weight: 500; margin-top: 6px; }
 .recap-form { display: flex; gap: 8px; width: 100%; margin-top: 28px; }
@@ -687,7 +684,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 }
 .lb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .lb-score { font-size: var(--text-2xl); font-weight: 600; color: var(--primary); line-height: 1; }
-.lb-meta { font-size: var(--text-xs); color: var(--text3); }
+.lb-meta { font-size: var(--text-sm); color: var(--text3); }
 
 /* ── Game mode switcher ───────────────────────────────────────────────── */
 .game-mode-switcher {
@@ -708,7 +705,7 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 /* ── Mic status indicator (Play the Notes) ────────────────────────────── */
 .mic-status {
   display: flex; align-items: center; gap: 5px;
-  font-size: var(--text-xs); color: var(--text3);
+  font-size: var(--text-sm); color: var(--text3);
   position: absolute; top: 10px; right: 14px;
 }
 .mic-status.active { color: var(--primary); }
@@ -793,7 +790,7 @@ details[open] summary::after { content: '▾'; }
   left: 50%;
 }
 .ptn-tuner-label {
-  font-size: var(--text-xs); font-weight: 600; color: var(--text3);
+  font-size: var(--text-sm); font-weight: 600; color: var(--text3);
   min-width: 52px; text-align: right; white-space: nowrap;
 }
 
@@ -848,7 +845,7 @@ details[open] summary::after { content: '▾'; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pa-subline {
-  font-size: var(--text-xs); color: var(--text3);
+  font-size: var(--text-sm); color: var(--text3);
 }
 .pa-header-controls {
   display: flex; align-items: center; gap: 10px; margin-left: auto;
@@ -891,10 +888,10 @@ details[open] summary::after { content: '▾'; }
   display: flex; flex-direction: column; gap: 4px;
 }
 .pa-complete-metric-num {
-  font-size: var(--text-metric-lg); font-weight: 700; color: var(--primary); line-height: 1;
+  font-size: var(--text-title); font-weight: 700; color: var(--primary); line-height: 1;
 }
 .pa-complete-metric-label {
-  font-size: var(--text-xs); color: var(--text3); letter-spacing: var(--tracking-label);
+  font-size: var(--text-sm); color: var(--text3); letter-spacing: var(--tracking-label);
 }
 .pa-complete-detail {
   font-size: var(--text-md); color: var(--text2);
@@ -1075,10 +1072,10 @@ details[open] summary::after { content: '▾'; }
   display: flex; flex-direction: column; gap: 4px;
 }
 .iv-complete-metric-num {
-  font-size: var(--text-metric-lg); font-weight: 700; color: var(--primary); line-height: 1;
+  font-size: var(--text-title); font-weight: 700; color: var(--primary); line-height: 1;
 }
 .iv-complete-metric-label {
-  font-size: var(--text-xs); color: var(--text3); letter-spacing: var(--tracking-label);
+  font-size: var(--text-sm); color: var(--text3); letter-spacing: var(--tracking-label);
 }
 .iv-complete-detail {
   font-size: var(--text-md); color: var(--text2);
