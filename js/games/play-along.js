@@ -556,6 +556,11 @@ function pa_advance() {
     return;
   }
   pa_scrollToCursor();
+  if (tiesForward) {
+    pa_correctNotes++;
+    paUpdateSummary();
+    pa_advance();
+  }
 }
 
 function pa_onSongComplete() {

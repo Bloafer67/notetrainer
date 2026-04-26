@@ -59,7 +59,7 @@ function detectPitch(buf, sampleRate) {
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.006) return null;
+  if (rms < 0.0035) return null;
 
   // Autocorrelation
   const corr = new Float32Array(SIZE);
