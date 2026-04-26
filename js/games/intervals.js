@@ -21,9 +21,19 @@ const IV_PRESETS = {
   all:       IV_INTERVALS.map(i => i.semis),
   consonant: IV_INTERVALS.filter(i => i.consonant).map(i => i.semis),
   dissonant: IV_INTERVALS.filter(i => !i.consonant).map(i => i.semis),
+  none:      [],
+};
+
+const IV_DIRECTION_MODES = ['ascending', 'descending', 'harmonic'];
+const IV_DIRECTION_LABELS = {
+  ascending: 'Ascending',
+  descending: 'Descending',
+  harmonic: 'Harmonic',
 };
 
 const IV_CHROMATIC_SHARPS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// Roots restricted to G3 (MIDI 55) and above so notes sit on/near the treble staff.
+const IV_ROOT_MIN_MIDI = 55;
 const IV_ROOT_POOL = (() => {
   const pool = [];
   for (let octave = 3; octave <= 4; octave++) {
@@ -44,7 +54,7 @@ const IV_STORAGE_KEY = 'mntr-intervals-cfg-v1';
 
 const ivState = {
   selected: new Set(IV_PRESETS.all),
-  playback: 'random',
+  directions: new Set(IV_DIRECTION_MODES),
   keyMode:  'chromatic',
   fixedTonic: 'C4',
   visual: 'ear-only',
@@ -73,7 +83,15 @@ function ivLoadConfig() {
       const valid = cfg.selected.filter(s => Number.isInteger(s) && s >= 1 && s <= 12);
       if (valid.length) ivState.selected = new Set(valid);
     }
-    if (cfg.playback)      ivState.playback      = cfg.playback;
+    if (Array.isArray(cfg.directions)) {
+      const valid = cfg.directions.filter(d => IV_DIRECTION_MODES.includes(d));
+      if (valid.length) ivState.directions = new Set(valid);
+    } else if (cfg.playback) {
+      // Migrate legacy single-mode field.
+      ivState.directions = cfg.playback === 'random'
+        ? new Set(IV_DIRECTION_MODES)
+        : new Set([cfg.playback]);
+    }
     if (cfg.keyMode)       ivState.keyMode       = cfg.keyMode;
     if (cfg.fixedTonic)    ivState.fixedTonic    = cfg.fixedTonic;
     if (cfg.visual)        ivState.visual        = cfg.visual;
@@ -85,7 +103,7 @@ function ivSaveConfig() {
   try {
     localStorage.setItem(IV_STORAGE_KEY, JSON.stringify({
       selected: [...ivState.selected],
-      playback: ivState.playback,
+      directions: [...ivState.directions],
       keyMode:  ivState.keyMode,
       fixedTonic: ivState.fixedTonic,
       visual: ivState.visual,
@@ -98,6 +116,7 @@ function ivSaveConfig() {
 function initIntervals() {
   ivLoadConfig();
   ivBuildChecklist();
+  ivSyncDirectionChecklist();
 
   const tonicSel = document.getElementById('iv-fixed-tonic-select');
   if (tonicSel) {
@@ -110,9 +129,6 @@ function initIntervals() {
     });
   }
 
-  const playbackSel = document.getElementById('iv-playback-select');
-  if (playbackSel) playbackSel.value = ivState.playback;
-
   const keyModeSel = document.getElementById('iv-key-mode-select');
   if (keyModeSel) keyModeSel.value = ivState.keyMode;
 
@@ -123,7 +139,7 @@ function initIntervals() {
   if (countSel) countSel.value = String(ivState.questionCount);
 
   ivSyncFixedTonicRow();
-  ivRefreshPresetButtons();
+  ivUpdateTraySummaries();
 }
 
 function ivBuildChecklist() {
@@ -141,11 +157,11 @@ function ivBuildChecklist() {
       if (input.checked) ivState.selected.add(iv.semis);
       else ivState.selected.delete(iv.semis);
       ivSaveConfig();
-      ivRefreshPresetButtons();
+      ivUpdateTraySummaries();
     });
     const span = document.createElement('span');
     span.className = 'iv-check-label';
-    span.textContent = iv.short;
+    span.textContent = iv.label;
     wrap.appendChild(input);
     wrap.appendChild(span);
     host.appendChild(wrap);
@@ -158,16 +174,9 @@ function ivSyncChecklistFromState() {
   });
 }
 
-function ivRefreshPresetButtons() {
-  const set = ivState.selected;
-  const presetMatches = (semisList) => {
-    if (set.size !== semisList.length) return false;
-    return semisList.every(s => set.has(s));
-  };
-  document.querySelectorAll('.iv-preset-btn').forEach(btn => {
-    const preset = btn.dataset.preset;
-    const list = IV_PRESETS[preset];
-    btn.classList.toggle('active', list ? presetMatches(list) : false);
+function ivSyncDirectionChecklist() {
+  document.querySelectorAll('#iv-direction-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = ivState.directions.has(cb.value);
   });
 }
 
@@ -177,19 +186,27 @@ function ivApplyPreset(preset) {
   ivState.selected = new Set(list);
   ivSaveConfig();
   ivSyncChecklistFromState();
-  ivRefreshPresetButtons();
+  ivUpdateTraySummaries();
+}
+
+function ivOnDirectionChange() {
+  const checks = document.querySelectorAll('#iv-direction-list input[type="checkbox"]');
+  const next = new Set();
+  checks.forEach(cb => { if (cb.checked) next.add(cb.value); });
+  ivState.directions = next;
+  ivSaveConfig();
+  ivUpdateTraySummaries();
 }
 
 function ivOnConfigChange() {
-  const playbackSel = document.getElementById('iv-playback-select');
-  const visualSel   = document.getElementById('iv-visual-select');
-  const countSel    = document.getElementById('iv-count-select');
-  const tonicSel    = document.getElementById('iv-fixed-tonic-select');
-  if (playbackSel) ivState.playback = playbackSel.value;
-  if (visualSel)   ivState.visual   = visualSel.value;
-  if (countSel)    ivState.questionCount = parseInt(countSel.value, 10) || 25;
-  if (tonicSel)    ivState.fixedTonic = tonicSel.value;
+  const visualSel = document.getElementById('iv-visual-select');
+  const countSel  = document.getElementById('iv-count-select');
+  const tonicSel  = document.getElementById('iv-fixed-tonic-select');
+  if (visualSel) ivState.visual        = visualSel.value;
+  if (countSel)  ivState.questionCount = parseInt(countSel.value, 10) || 25;
+  if (tonicSel)  ivState.fixedTonic    = tonicSel.value;
   ivSaveConfig();
+  ivUpdateTraySummaries();
 }
 
 function ivOnKeyModeChange() {
@@ -197,12 +214,41 @@ function ivOnKeyModeChange() {
   if (sel) ivState.keyMode = sel.value;
   ivSyncFixedTonicRow();
   ivSaveConfig();
+  ivUpdateTraySummaries();
 }
 
 function ivSyncFixedTonicRow() {
   const row = document.getElementById('iv-fixed-tonic-row');
   if (!row) return;
   row.style.display = ivState.keyMode === 'fixed' ? '' : 'none';
+}
+
+function ivUpdateTraySummaries() {
+  const intervalsState = document.getElementById('iv-intervals-state');
+  if (intervalsState) intervalsState.textContent = ivIntervalsSummaryText();
+  const directionState = document.getElementById('iv-direction-state');
+  if (directionState) directionState.textContent = ivDirectionSummaryText();
+}
+
+function ivIntervalsSummaryText() {
+  const set = ivState.selected;
+  const matches = list => set.size === list.length && list.every(s => set.has(s));
+  if (matches(IV_PRESETS.all))       return 'All 12';
+  if (matches(IV_PRESETS.consonant)) return 'Consonant only';
+  if (matches(IV_PRESETS.dissonant)) return 'Dissonant only';
+  if (set.size === 0) return 'None';
+  if (set.size === 1) {
+    const iv = IV_INTERVALS.find(i => set.has(i.semis));
+    return iv ? iv.label : '1 selected';
+  }
+  return `${set.size} selected`;
+}
+
+function ivDirectionSummaryText() {
+  const dirs = IV_DIRECTION_MODES.filter(d => ivState.directions.has(d));
+  if (dirs.length === 0) return 'None';
+  if (dirs.length === IV_DIRECTION_MODES.length) return 'All';
+  return dirs.map(d => IV_DIRECTION_LABELS[d]).join(' + ');
 }
 
 // ── Note math ─────────────────────────────────────────────────────────────
@@ -233,26 +279,30 @@ function ivFreqFor(noteName) {
 
 function ivPickRoot() {
   if (ivState.keyMode === 'fixed') return ivState.fixedTonic;
-  // Avoid a root that pushes the upper note out of our practical range.
-  // Cap the upper note at MIDI 84 (C6) so 12-semitone intervals fit.
+  // Cap the upper note at MIDI 84 (C6) so 12-semitone intervals fit, and
+  // require roots at or above G3 so notes sit on/near the treble staff.
   const maxRootMidi = 84 - 12;
   const candidates = IV_ROOT_POOL.filter(n => {
     const p = ivParseNote(n);
-    return p && p.midi <= maxRootMidi;
+    return p && p.midi >= IV_ROOT_MIN_MIDI && p.midi <= maxRootMidi;
   });
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 function ivResolvePlayback() {
-  if (ivState.playback !== 'random') return ivState.playback;
-  const opts = ['ascending', 'descending', 'harmonic'];
-  return opts[Math.floor(Math.random() * opts.length)];
+  const enabled = IV_DIRECTION_MODES.filter(d => ivState.directions.has(d));
+  if (enabled.length === 0) return 'ascending';
+  return enabled[Math.floor(Math.random() * enabled.length)];
 }
 
 // ── Game flow ─────────────────────────────────────────────────────────────
 function startIntervals() {
   if (ivState.selected.size < 2) {
     alert('Pick at least two intervals to drill.');
+    return;
+  }
+  if (ivState.directions.size === 0) {
+    alert('Pick at least one direction (Ascending, Descending, or Harmonic).');
     return;
   }
   ivState.active = true;
@@ -351,7 +401,7 @@ function ivBuildChoiceButtons() {
     const btn = document.createElement('button');
     btn.className = 'iv-choice-btn';
     btn.dataset.semis = String(iv.semis);
-    btn.innerHTML = `<span class="iv-choice-short">${iv.short}</span><span class="iv-choice-label">${iv.label}</span>`;
+    btn.textContent = iv.label;
     btn.onclick = () => ivCheckAnswer(iv.semis, btn);
     host.appendChild(btn);
   });
@@ -400,13 +450,10 @@ function ivRenderStaffIfNeeded() {
     { name: ivState.currentRoot, actualName: ivState.currentRoot },
     { name: upper, actualName: upper },
   ];
-  // Pick a clef that fits the lower note: bass for low, treble otherwise.
-  const rootMidi = ivParseNote(ivState.currentRoot)?.midi || 60;
-  const useBass = rootMidi < 57; // below A3 → bass
   reserveStaffHeight(container, {
-    clef: useBass ? 'bass' : 'treble', keySigIndex: 0, rangeMode: 'full-range', showLabels: false,
+    clef: 'treble', keySigIndex: 0, rangeMode: 'full-range', showLabels: false,
   }).then(() => {
-    renderNotes(container, notes, { clef: useBass ? 'bass' : 'treble', keySigIndex: 0 });
+    renderNotes(container, notes, { clef: 'treble', keySigIndex: 0 });
   });
 }
 
@@ -418,6 +465,8 @@ function ivIntervalSetLabel() {
   if (matches(IV_PRESETS.dissonant)) return 'Dissonant only';
   return `Custom (${set.size})`;
 }
+
+window.ivOnDirectionChange = ivOnDirectionChange;
 
 function ivEndSession() {
   ivState.active = false;

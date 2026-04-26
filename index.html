@@ -146,46 +146,50 @@
 
         <!-- Intervals extra selectors -->
         <div id="iv-pregame-selectors" class="pregame-selectors">
-          <div class="iv-presets" role="group" aria-label="Interval presets">
-            <button type="button" class="iv-preset-btn" data-preset="all"      onclick="ivApplyPreset('all')">Select All</button>
-            <button type="button" class="iv-preset-btn" data-preset="consonant" onclick="ivApplyPreset('consonant')">Consonant Only</button>
-            <button type="button" class="iv-preset-btn" data-preset="dissonant" onclick="ivApplyPreset('dissonant')">Dissonant Only</button>
-          </div>
-          <div class="iv-checklist" id="iv-checklist" role="group" aria-label="Choose intervals to drill"></div>
-          <div class="pregame-selectors-row">
-            <select class="pregame-select" id="iv-playback-select" onchange="ivOnConfigChange()">
-              <option value="ascending">Ascending</option>
-              <option value="descending">Descending</option>
-              <option value="harmonic">Harmonic</option>
-              <option value="random" selected>Random Mix</option>
-            </select>
-            <div class="info-nub">i
-              <div class="info-tooltip">Ascending plays low→high, Descending plays high→low, Harmonic plays both notes at once. Random mixes all three.</div>
+          <details class="iv-tray" id="iv-intervals-tray">
+            <summary>
+              <span class="iv-tray-label">Intervals</span>
+              <span class="iv-tray-state" id="iv-intervals-state">All 12</span>
+            </summary>
+            <div class="iv-tray-body">
+              <div class="iv-quick-picks" role="group" aria-label="Interval quick picks">
+                <button type="button" class="iv-quick-btn" onclick="ivApplyPreset('all')">All</button>
+                <button type="button" class="iv-quick-btn" onclick="ivApplyPreset('consonant')">Consonant</button>
+                <button type="button" class="iv-quick-btn" onclick="ivApplyPreset('dissonant')">Dissonant</button>
+                <button type="button" class="iv-quick-btn" onclick="ivApplyPreset('none')">None</button>
+              </div>
+              <div class="iv-checklist" id="iv-checklist" role="group" aria-label="Choose intervals to drill"></div>
             </div>
-          </div>
+          </details>
+
+          <details class="iv-tray" id="iv-direction-tray">
+            <summary>
+              <span class="iv-tray-label">Direction</span>
+              <span class="iv-tray-state" id="iv-direction-state">All</span>
+            </summary>
+            <div class="iv-tray-body">
+              <div class="iv-checklist iv-direction-list" id="iv-direction-list" role="group" aria-label="Playback directions">
+                <label class="iv-check"><input type="checkbox" value="ascending" checked onchange="ivOnDirectionChange()"><span class="iv-check-label">Ascending</span></label>
+                <label class="iv-check"><input type="checkbox" value="descending" checked onchange="ivOnDirectionChange()"><span class="iv-check-label">Descending</span></label>
+                <label class="iv-check"><input type="checkbox" value="harmonic" checked onchange="ivOnDirectionChange()"><span class="iv-check-label">Harmonic</span></label>
+              </div>
+            </div>
+          </details>
+
           <div class="pregame-selectors-row">
             <select class="pregame-select" id="iv-key-mode-select" onchange="ivOnKeyModeChange()">
-              <option value="chromatic" selected>Chromatic (random root)</option>
-              <option value="fixed">Fixed Tonic</option>
+              <option value="chromatic" selected>Random root each turn</option>
+              <option value="fixed">Fixed tonic</option>
             </select>
-            <div class="info-nub">i
-              <div class="info-tooltip">Chromatic picks a new root every turn. Fixed Tonic locks the root to one note so every interval is heard from the same starting pitch.</div>
-            </div>
           </div>
           <div class="pregame-selectors-row" id="iv-fixed-tonic-row" style="display:none;">
             <select class="pregame-select" id="iv-fixed-tonic-select" onchange="ivOnConfigChange()"></select>
-            <div class="info-nub">i
-              <div class="info-tooltip">The tonic note all intervals stem from in Fixed Tonic mode.</div>
-            </div>
           </div>
           <div class="pregame-selectors-row">
             <select class="pregame-select" id="iv-visual-select" onchange="ivOnConfigChange()">
               <option value="ear-only" selected>Ear Only</option>
               <option value="staff">Staff Assist</option>
             </select>
-            <div class="info-nub">i
-              <div class="info-tooltip">Ear Only hides the staff so you train pure ear recognition. Staff Assist shows both notes on a grand staff as they play.</div>
-            </div>
           </div>
           <div class="pregame-selectors-row">
             <select class="pregame-select" id="iv-count-select" onchange="ivOnConfigChange()">
@@ -194,9 +198,6 @@
               <option value="50">50 questions</option>
               <option value="100">100 questions</option>
             </select>
-            <div class="info-nub">i
-              <div class="info-tooltip">How many intervals to drill in this session.</div>
-            </div>
           </div>
         </div>
         <button class="pregame-play-btn" onclick="startGame()">Play</button>
