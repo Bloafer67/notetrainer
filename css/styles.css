@@ -260,6 +260,22 @@ select optgroup {
   cursor: default;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .custom-select__trigger:not(:disabled):hover {
+    background-color: var(--surface2);
+  }
+
+  .custom-select--game-mode .custom-select__trigger:not(:disabled):hover {
+    background-color: transparent;
+    color: var(--primary-text);
+  }
+
+  .custom-select__option:not(.selected):not(:disabled):hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+}
+
 .custom-select--pregame .custom-select__trigger,
 .custom-select--leaderboard .custom-select__trigger {
   border-radius: 12px;
