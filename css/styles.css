@@ -197,8 +197,25 @@ select optgroup {
   pointer-events: none;
 }
 
+.custom-select__content,
+.custom-select__option.has-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.custom-select__icon {
+  flex: 0 0 auto;
+  width: 1.25em;
+  font-size: 1.1em;
+  line-height: 1;
+  text-align: center;
+}
+
 .custom-select__label {
   display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -272,15 +289,19 @@ select optgroup {
   border: none;
   border-radius: 0;
   background: transparent;
-  font-size: var(--text-2xl);
+  font-size: var(--text-base);
   font-weight: 600;
   min-height: 24px;
-  padding: 0 20px 0 0;
-  letter-spacing: var(--tracking-heading);
+  padding: 2px 20px 2px 0;
+  letter-spacing: 0;
 }
 
 .custom-select--game-mode .custom-select__trigger::after {
   right: 2px;
+}
+
+.custom-select--game-mode .custom-select__content {
+  gap: 6px;
 }
 
 .custom-select--game-mode .custom-select__menu {
@@ -298,10 +319,11 @@ select optgroup {
 }
 
 .custom-select--game-mode .custom-select__option {
-  font-size: var(--text-2xl);
+  font-size: var(--text-base);
   font-weight: 600;
   padding: 10px 12px;
   border-radius: 12px;
+  letter-spacing: 0;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -697,11 +719,10 @@ h1 { font-size: var(--text-title); font-weight: 600; letter-spacing: var(--track
 .game-mode-switcher {
   display: flex; align-items: center; gap: 8px;
 }
-.game-mode-emoji { font-size: var(--text-title); line-height: 1; }
 .game-mode-select {
-  font-family: inherit; font-size: var(--text-2xl); font-weight: 600;
+  font-family: inherit; font-size: var(--text-base); font-weight: 600;
   color: var(--text); background: transparent; border: none;
-  cursor: pointer; appearance: none; letter-spacing: var(--tracking-heading);
+  cursor: pointer; appearance: none; letter-spacing: 0;
   min-height: 24px;
   padding-right: 20px;
   background-image: var(--select-chevron);

@@ -200,7 +200,8 @@ function applyRoute({ game, subview, params }) {
     select.value = game;
     window.refreshCustomSelect?.(select);
   }
-  document.getElementById('game-mode-emoji').textContent = cfg.emoji;
+  const gameModeEmoji = document.getElementById('game-mode-emoji');
+  if (gameModeEmoji) gameModeEmoji.textContent = cfg.emoji;
 
   // Default to Guitar (8vb) for pitch-based modes
   if (game === 'play-the-notes' || game === 'play-along' || game === 'bursts') {
