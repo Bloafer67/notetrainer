@@ -176,6 +176,7 @@ select optgroup {
   appearance: none;
   -webkit-appearance: none;
   position: relative;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .custom-select__trigger:disabled {
@@ -247,6 +248,7 @@ select optgroup {
   font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 
 .custom-select__option.selected {
