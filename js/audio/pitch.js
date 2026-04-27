@@ -110,26 +110,34 @@ function detectPitchVerbose(buf, sampleRate) {
   if (clarity < PITCH_CLARITY_GATE) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'clarity' };
   if (maxPos < 2) return { hz: null, rms, clarity, refinedPos: maxPos, reason: 'no-peak' };
 
-  // Temporal octave correction. On a plucked string, the 2nd harmonic can
-  // outlast the fundamental during decay, flipping corr[T/2] above corr[T].
-  // Gated on low RMS so a fresh, loud attack at a different octave wins the
-  // moment regardless of what we tracked before.
+  // Temporal octave correction (bidirectional). During decay, harmonic content
+  // can flip the autocorrelation peak by an octave in either direction:
+  //   - 2nd harmonic dominates → algorithm picks corr[T/2] (octave up)
+  //   - sub-harmonic resonance → algorithm picks corr[2T] (octave down)
+  // If the new frame's period is exactly an octave away from the previously
+  // stable period, snap back to the prior period whenever there's still a
+  // meaningful peak there. Bidirectional correction also stops a one-off
+  // wrong-octave detection from poisoning lastValidPos and locking subsequent
+  // frames to the wrong octave.
   const DECAY_RMS_MAX = 0.025;
   let octaveCorrected = false;
   if (lastValidPos !== null && rms < DECAY_RMS_MAX) {
     const ratio = lastValidPos / maxPos;
-    if (ratio > 1.7 && ratio < 2.3) {
+    const octaveJump = (ratio > 1.7 && ratio < 2.3) || (ratio > 0.43 && ratio < 0.59);
+    if (octaveJump) {
       const target = Math.round(lastValidPos);
-      const w = Math.max(2, Math.round(maxPos * 0.06));
-      const lo = Math.max(d, target - w);
-      const hi = Math.min(SIZE - 2, target + w);
-      let cand = -Infinity, candPos = target;
-      for (let j = lo; j <= hi; j++) {
-        if (corr[j] > cand) { cand = corr[j]; candPos = j; }
-      }
-      if (cand > maxVal * 0.15) {
-        maxPos = candPos;
-        octaveCorrected = true;
+      if (target >= d && target + 1 < SIZE) {
+        const w = Math.max(2, Math.round(maxPos * 0.06));
+        const lo = Math.max(d, target - w);
+        const hi = Math.min(SIZE - 2, target + w);
+        let cand = -Infinity, candPos = target;
+        for (let j = lo; j <= hi; j++) {
+          if (corr[j] > cand) { cand = corr[j]; candPos = j; }
+        }
+        if (cand > maxVal * 0.15) {
+          maxPos = candPos;
+          octaveCorrected = true;
+        }
       }
     }
   }
