@@ -44,7 +44,7 @@ function boardClefLabel(game, clefLabel, rangeMode = window.noteRangeMode) {
 
 function boardKey(e) {
   const game = e.game || 'name-the-notes';
-  if (game === 'play-along') return ['play-along', 'song', e.song || e.key || 'unknown-song'].join('|');
+  if (game === 'play-along') return ['play-along', 'song', e.key || e.song || 'unknown-song'].join('|');
   if (game === 'intervals') {
     const count = e.duration ?? e.Duration ?? 25;
     return ['intervals', 'set', e.key || 'All intervals', count].join('|');
@@ -269,11 +269,10 @@ function buildLeaderboardPayload(name) {
       name,
       score: result.score ?? 0,
       clef: 'Guitar (8vb)',
-      key: songLabel(songKey),
+      key: songKey,
       game: 'play-along',
       duration: 0,
       Duration: 0,
-      song: songKey,
       time_ms: Math.round(Number(result.time_ms) || 0),
       accuracy: normalizeAccuracy(result.accuracy),
     };
