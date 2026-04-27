@@ -306,8 +306,8 @@ select optgroup {
 
 .custom-select--game-mode .custom-select__menu {
   min-width: 220px;
-  left: auto;
-  right: 0;
+  left: -18px;
+  right: auto;
 }
 
 .custom-select--pregame .custom-select__option,
