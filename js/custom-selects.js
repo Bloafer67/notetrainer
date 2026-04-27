@@ -26,20 +26,45 @@ function closeAllCustomSelects(except) {
   });
 }
 
+function optionIcon(option) {
+  return option?.dataset?.icon || '';
+}
+
+function appendSelectContent(parent, text, icon) {
+  if (icon) {
+    const iconEl = document.createElement('span');
+    iconEl.className = 'custom-select__icon';
+    iconEl.setAttribute('aria-hidden', 'true');
+    iconEl.textContent = icon;
+    parent.appendChild(iconEl);
+  }
+
+  const labelEl = document.createElement('span');
+  labelEl.className = 'custom-select__label';
+  labelEl.textContent = text || '';
+  parent.appendChild(labelEl);
+  return labelEl;
+}
+
 function syncCustomSelect(select) {
   const api = CUSTOM_SELECTS.get(select);
   if (!api) return;
 
   api.trigger.disabled = select.disabled;
   const selectedOption = select.options[select.selectedIndex] || select.options[0];
-  api.label.textContent = selectedOption ? selectedOption.textContent : '';
+  const selectedIcon = optionIcon(selectedOption);
+  api.trigger.classList.toggle('has-icon', Boolean(selectedIcon));
+  api.content.innerHTML = '';
+  api.label = appendSelectContent(api.content, selectedOption ? selectedOption.textContent : '', selectedIcon);
   api.menu.innerHTML = '';
 
   Array.from(select.options).forEach((option, index) => {
+    const icon = optionIcon(option);
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'custom-select__option';
-    item.textContent = option.textContent;
+    if (icon) item.classList.add('has-icon');
+    appendSelectContent(item, option.textContent, icon);
     item.disabled = option.disabled;
     item.setAttribute('role', 'option');
     item.setAttribute('aria-selected', option.selected ? 'true' : 'false');
@@ -72,8 +97,8 @@ function enhanceSelect(select) {
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
 
-  const label = document.createElement('span');
-  label.className = 'custom-select__label';
+  const content = document.createElement('span');
+  content.className = 'custom-select__content';
 
   const menu = document.createElement('div');
   menu.className = 'custom-select__menu';
@@ -83,14 +108,14 @@ function enhanceSelect(select) {
   parent.insertBefore(wrap, select);
   wrap.appendChild(select);
   wrap.appendChild(trigger);
-  trigger.appendChild(label);
+  trigger.appendChild(content);
   wrap.appendChild(menu);
 
   select.classList.add('native-select');
   select.setAttribute('tabindex', '-1');
   select.setAttribute('aria-hidden', 'true');
 
-  const api = { wrap, trigger, label, menu, open: false };
+  const api = { wrap, trigger, content, label: null, menu, open: false };
   CUSTOM_SELECTS.set(select, api);
 
   trigger.addEventListener('click', () => {
