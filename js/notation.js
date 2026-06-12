@@ -150,6 +150,19 @@ function notationThemeOptions() {
   };
 }
 
+function notationApplyCompactMargins(osmd) {
+  // Zero OSMD's default page/system margins so single-measure staves fill the
+  // SVG canvas instead of sitting inside ~17% gutters on each side.
+  const rules = osmd.EngravingRules;
+  if (!rules) return;
+  rules.PageLeftMargin = 0;
+  rules.PageRightMargin = 0;
+  rules.PageTopMargin = 0;
+  rules.PageBottomMargin = 0;
+  rules.SystemLeftMargin = 0;
+  rules.SystemRightMargin = 0;
+}
+
 function notationGetOsmd(container) {
   let osmd = NOTATION_OSMD_INSTANCES.get(container);
   if (!osmd) {
@@ -164,6 +177,7 @@ function notationGetOsmd(container) {
       renderSingleHorizontalStaffline: true,
       ...notationThemeOptions(),
     });
+    notationApplyCompactMargins(osmd);
     NOTATION_OSMD_INSTANCES.set(container, osmd);
   } else {
     osmd.setOptions(notationThemeOptions());
