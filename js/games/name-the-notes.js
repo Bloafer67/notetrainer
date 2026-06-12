@@ -292,12 +292,13 @@ async function ntnRenderCurrent() {
     keySigIndex: getActiveDrillKeyIndex(),
     rangeMode: window.noteRangeMode,
     showLabels: false,
+    padBeats: 1,
   });
   await renderNotes(container, [{
     name: current.name,
     actualName: current.actualName,
   }], {
-    clef, keySigIndex: getActiveDrillKeyIndex(),
+    clef, keySigIndex: getActiveDrillKeyIndex(), padBeats: 1,
   });
 }
 
